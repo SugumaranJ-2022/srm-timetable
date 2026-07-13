@@ -1,0 +1,13 @@
+{
+  "name": "timetable-management",
+  "version": "1.0.0",
+  "description": "Timetable Management System",
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "venv\\Scripts\\python -m uvicorn backend.app.main:app --reload",
+    "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
