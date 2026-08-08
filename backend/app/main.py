@@ -33,6 +33,24 @@ app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(timetables.router, prefix=settings.API_V1_STR)
 
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from backend.app.core.database import get_db
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Smart Timetable Management System API"}
+
+@app.get("/debug-db")
+async def debug_db(db: AsyncSession = Depends(get_db)):
+    from backend.app.models.models import User
+    from sqlalchemy.future import select
+    res = await db.execute(select(User))
+    users = res.scalars().all()
+    db_url = settings.DATABASE_URL
+    masked_url = db_url.split("@")[-1] if "@" in db_url else db_url
+    return {
+        "database_url_host": masked_url,
+        "users_count": len(users),
+        "users_list": [u.email for u in users]
+    }
