@@ -1,164 +1,122 @@
-# Production Deployment Guide
+# 🚀 Live Deployment Guide (Vercel & Render)
 
-This guide outlines the steps required to deploy the **Smart Timetable Management System** to a live production server.
+This document provides a step-by-step guide to deploying the **SRM Smart Timetable Management System** to production using **Vercel** (for the React Frontend) and **Render** (for the FastAPI Backend + PostgreSQL Database).
 
 ---
 
-## 📋 General Overview
-
-To run the application in production:
-1. **Frontend**: Compile the React SPA into static HTML, CSS, and JS files, and serve them via a web server (e.g., Nginx, Vercel, Netlify).
-2. **Backend**: Run the FastAPI application using an ASGI server (Uvicorn/Gunicorn) behind a reverse proxy (Nginx) with SSL (HTTPS) enabled.
-3. **Database**: In a production environment with high concurrent writes, it is highly recommended to migrate from SQLite to **PostgreSQL**.
+## 🗺️ Deployment Architecture
 
 ```
-                           +------------------------+
-                           |  User Browser (HTTPS)  |
-                           +-----------+------------+
-                                       |
-                                       v
-                           +-----------+------------+
-                           |    Nginx Reverse Proxy |
-                           +-----+------------+-----+
-                                 |            |
-             (Static Files /)    |            |   (API Requests /api)
-                                 v            v
-                      +----------+---+   +----+--------------------+
-                      | Frontend Dist|   | Gunicorn/Uvicorn (8000) |
-                      +--------------+   +----+--------------------+
-                                              |
-                                              v
-                                         +----+-------+
-                                         | PostgreSQL |
-                                         +------------+
+┌─────────────────────────────────┐
+│     React Frontend (Vercel)     │
+│  https://srm-timetable.vercel.app│
+└────────────────┬────────────────┘
+                 │
+                 │ HTTPS API Calls (JSON)
+                 ▼
+┌─────────────────────────────────┐
+│     FastAPI Backend (Render)    │
+│  https://srm-timetable.onrender.com
+└────────────────┬────────────────┘
+                 │
+                 │ Database Connection
+                 ▼
+┌─────────────────────────────────┐
+│   PostgreSQL Database (Render)  │
+│      Cloud Managed SQL DB       │
+└─────────────────────────────────┘
 ```
 
 ---
 
-## 🛠️ Option 1: Simple Cloud Hosting (Recommended)
+## 🗄️ Step 1: Deploy PostgreSQL Database on Render
 
-This is the fastest method to get the app live using managed platforms.
+Since SQLite is a local file-based database, any updates or server restarts on Render will wipe the database. To keep data persistent, we will deploy a **PostgreSQL** instance on Render's free tier.
 
-### 1. Frontend (Deploy to Vercel or Netlify)
-- Link your GitHub repository to [Vercel](https://vercel.com/) or [Netlify](https://www.netlify.com/).
-- Configure the build command as: `npm run build`
-- Configure the output directory as: `frontend/dist`
-- Add the backend URL environment variable:
-  - Add `VITE_API_BASE_URL` pointing to your deployed backend (e.g., `https://api.yourdomain.com`).
-
-### 2. Backend (Deploy to Render or Railway)
-- Link your GitHub repository to [Render](https://render.com/) or [Railway](https://railway.app/).
-- Set the start command to:
-  ```bash
-  python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
-  ```
-- Define the following Environment Variables in the service settings dashboard:
-  - `SECRET_KEY`: Generate a long, secure random string.
-  - `DATABASE_URL`: Add the connection string for your database (e.g., PostgreSQL database URL provided by Render/Railway).
+1. Go to [Render Dashboard](https://dashboard.render.com/) and sign in.
+2. Click **New +** and select **PostgreSQL**.
+3. Configure the database with these settings:
+   - **Name**: `srm-timetable-db`
+   - **Region**: Select the region closest to you (e.g., Singapore or Oregon).
+   - **Database Name**: `timetable_db`
+   - **User**: `srm_admin`
+   - **Plan**: Select **Free**.
+4. Click **Create Database**.
+5. Once active, copy the **Internal Database URL** or **External Database URL** (e.g., `postgresql://srm_admin:password@host/timetable_db`).
+6. Update the scheme to include `+asyncpg` for python async support:
+   - Change `postgresql://` to `postgresql+asyncpg://`.
+   - **Example**: `postgresql+asyncpg://srm_admin:password@host/timetable_db`.
+   - Keep this URL safe for Step 2!
 
 ---
 
-## 🖥️ Option 2: Linux Virtual Private Server (VPS) Deployment
-*(Ubuntu 22.04 / 24.04 on AWS, DigitalOcean, Linode, etc.)*
+## 🐍 Step 2: Deploy FastAPI Backend on Render
 
-### 1. Build the Frontend Assets
-Run the build script on your development machine or inside a CI/CD pipeline:
-```bash
-npm run build --prefix frontend
-```
-This generates the static bundle in `frontend/dist`. Transfer these files to your VPS path (e.g. `/var/www/timetable/frontend`).
+Now, we will host the Python FastAPI backend API.
 
-### 2. Set Up Python & Systemd on VPS
+1. Go to the [Render Dashboard](https://dashboard.render.com/).
+2. Click **New +** and select **Web Service**.
+3. Select **Build and deploy from a Git repository** and link your GitHub repository: `SugumaranJ-2022/srm-timetable`.
+4. Configure the Web Service settings:
+   - **Name**: `srm-timetable-backend`
+   - **Environment**: `Python 3`
+   - **Region**: Same region as your database.
+   - **Branch**: `main`
+   - **Root Directory**: *(Leave blank)*
+   - **Build Command**: `pip install -r backend/requirements.txt`
+   - **Start Command**: `python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+   - **Plan**: Select **Free**.
+5. Click **Advanced** and add the following **Environment Variables**:
+   - `SECRET_KEY`: A secure random string (e.g. `srm-secure-jwt-secret-key-2026-xyz`).
+   - `DATABASE_URL`: The **async** PostgreSQL URL from Step 1 (e.g., `postgresql+asyncpg://srm_admin:password@host/timetable_db`).
+6. Click **Create Web Service**.
+7. Once Render starts building, open the service shell or wait for deployment logs.
+8. **Initialize Database Tables & Seed Data**:
+   Render doesn't run backend migrations automatically. To seed the database on Render:
+   - Go to your Render Web Service page.
+   - Click the **Shell** tab on the left sidebar.
+   - Run the seed command inside the shell:
+     ```bash
+     python -m backend.app.seed
+     ```
+   - This will automatically create all tables in your PostgreSQL database, seed the baseline sections, staff profiles, and classrooms, and run the OR-Tools solver to pre-generate all timetables!
 
-Clone the project to the server, create a virtual environment, and install requirements:
-```bash
-cd /var/www/timetable
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-```
+---
 
-Create a production `.env` configuration file in the project folder:
-```ini
-SECRET_KEY=generate-a-secure-random-key-here
-DATABASE_URL=sqlite+aiosqlite:////var/www/timetable/timetable.db
-```
+## 🎨 Step 3: Deploy React Frontend on Vercel
 
-Create a **Systemd service file** to keep the backend running persistently:
-```bash
-sudo nano /etc/systemd/system/timetable-backend.service
-```
-Insert the following configuration:
-```ini
-[Unit]
-Description=FastAPI Timetable Backend
-After=network.target
+With the backend active, we can deploy the React app.
 
-[Service]
-User=www-data
-WorkingDirectory=/var/www/timetable
-ExecStart=/var/www/timetable/venv/bin/gunicorn backend.app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 127.0.0.1:8000
-Restart=always
+1. Go to [Vercel Dashboard](https://vercel.com/) and log in.
+2. Click **Add New** and select **Project**.
+3. Import your GitHub repository: `SugumaranJ-2022/srm-timetable`.
+4. Configure the project:
+   - **Framework Preset**: Select **Vite** or **Other**.
+   - **Root Directory**: Edit and set this to `frontend`.
+5. Under **Build and Development Settings**:
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+6. Under **Environment Variables**, add:
+   - **Key**: `VITE_API_BASE_URL`
+   - **Value**: The URL of your deployed Render Web Service (e.g., `https://srm-timetable-backend.onrender.com`).
+   - *(Note: Do not include a trailing slash, and do not append `/api/v1` — the Axios config automatically appends `/api/v1`).*
+7. Click **Deploy**.
+8. Once finished, Vercel will give you a live production URL (e.g., `https://srm-timetable.vercel.app`).
 
-[Install]
-WantedBy=multi-user.target
-```
+---
 
-Enable and start the service:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable timetable-backend
-sudo systemctl start timetable-backend
-```
+## 🧪 Step 4: Verification
 
-### 3. Install & Configure Nginx (Reverse Proxy & Static Server)
+1. Open your Vercel URL in the browser.
+2. Try logging in using the default seeded admin account:
+   - **Email**: `admin@srm.edu.in`
+   - **Password**: `Admin@1234`
+3. Try generating a new timetable, manually modifying a slot, or checking the Academic Calendar.
+4. Verify there are no network issues (CORS warnings) in the browser console.
 
-Install Nginx:
-```bash
-sudo apt update
-sudo apt install nginx
-```
+---
 
-Create a server configuration file:
-```bash
-sudo nano /etc/nginx/sites-available/timetable
-```
+## 🛠️ Maintenance & Redeployment
 
-Insert the configuration below, replacing server names and directories:
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com www.yourdomain.com;
-
-    # Serve React Frontend Static Files
-    location / {
-        root /var/www/timetable/frontend/dist;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Proxy API Requests to FastAPI Backend
-    location /api/v1 {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Enable the configuration and reload Nginx:
-```bash
-sudo ln -s /etc/nginx/sites-available/timetable /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-```
-
-### 4. Enable SSL (HTTPS) with Certbot
-
-To secure the site with Let's Encrypt:
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
-```
-Follow the prompts, and Nginx will be automatically configured to redirect all HTTP traffic to secure HTTPS.
+- **Auto Deploys**: Any time you push a new commit to the `main` branch of your GitHub repository, both Vercel and Render will automatically trigger new builds and deploy your updates.
+- **Spin-down**: Render's free tier services spin down after 15 minutes of inactivity. When you open the website after a long break, the first request may take ~50 seconds to complete while Render boots up the container.
