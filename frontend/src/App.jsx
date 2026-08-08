@@ -193,6 +193,10 @@ const AppContent = () => {
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover z-0"
+          style={{
+            transform: 'scale(1.1) translate(2%, 3%)',
+            transformOrigin: 'center center'
+          }}
         >
           <source src="/video.mp4" type="video/mp4" />
           Your browser does not support the video tag.
