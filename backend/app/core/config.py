@@ -1,8 +1,9 @@
 import os
+from pathlib import Path
 
-# Support loading from .env if present
-env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
-if os.path.exists(env_path):
+# Support loading from .env if present (4 levels up from config.py is project root)
+env_path = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
