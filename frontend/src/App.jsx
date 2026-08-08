@@ -66,6 +66,8 @@ const AppContent = () => {
   const [logoutDetails, setLogoutDetails] = useState(null);
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
 
+  const videoRef = React.useRef(null);
+
   React.useEffect(() => {
     if (user && !prevUser) {
       setShowWelcome(true);
@@ -82,6 +84,16 @@ const AppContent = () => {
     }
     setPrevUser(user);
   }, [user, prevUser]);
+
+  React.useEffect(() => {
+    if (videoRef.current) {
+      if (isSubmitting) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [isSubmitting]);
 
   // Login states
   const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
@@ -175,6 +187,7 @@ const AppContent = () => {
 
         {/* Video Background */}
         <video
+          ref={videoRef}
           autoPlay
           loop
           muted
