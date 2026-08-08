@@ -57,16 +57,7 @@ const AppContent = () => {
   const { user, role, profile, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  // Background slideshow index
-  const [bgIndex, setBgIndex] = useState(0);
-  const backgrounds = ['/srm_3d_cover.png', '/srm_gate.png', '/srm_techpark.png'];
 
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setBgIndex((prev) => (prev + 1) % backgrounds.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -182,18 +173,17 @@ const AppContent = () => {
     return (
       <div className="min-h-screen relative flex justify-center items-center p-4 transition-colors duration-300 overflow-hidden select-none">
 
-        {/* Slideshow background images with absolute fade-in/fade-out */}
-        {backgrounds.map((bg, idx) => (
-          <div
-            key={bg}
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1500ms] ease-in-out"
-            style={{
-              backgroundImage: `url('${bg}')`,
-              opacity: bgIndex === idx ? 1 : 0,
-              zIndex: 0
-            }}
-          ></div>
-        ))}
+        {/* Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        >
+          <source src="/video.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
 
         {/* Dynamic Light/Dark Overlay Mask */}
         <div className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/50 transition-colors duration-300 z-10"></div>
