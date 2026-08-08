@@ -85,6 +85,14 @@ const AppContent = () => {
     setPrevUser(user);
   }, [user, prevUser]);
 
+  // Login states
+  const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   React.useEffect(() => {
     if (videoRef.current) {
       if (isSubmitting) {
@@ -94,14 +102,6 @@ const AppContent = () => {
       }
     }
   }, [isSubmitting]);
-
-  // Login states
-  const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Student/Staff schedule variables
   const [studentTimetable, setStudentTimetable] = useState([]);
