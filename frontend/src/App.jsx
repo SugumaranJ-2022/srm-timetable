@@ -196,7 +196,7 @@ const AppContent = () => {
         ))}
 
         {/* Dynamic Light/Dark Overlay Mask */}
-        <div className="absolute inset-0 bg-white/70 dark:bg-[#070b13]/85 backdrop-blur-[2px] transition-colors duration-300 z-10"></div>
+        <div className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/50 transition-colors duration-300 z-10"></div>
 
         {/* Full-width Top Navigation Bar */}
         <header className="absolute top-0 left-0 right-0 w-full px-16 py-4 flex items-center justify-center z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md transition-colors duration-300">
