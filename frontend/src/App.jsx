@@ -194,7 +194,7 @@ const AppContent = () => {
           playsInline
           className="absolute inset-0 w-full h-full object-cover z-0"
           style={{
-            transform: 'scale(1.1) translate(2%, 3%)',
+            transform: 'scale(1.25) translate(4%, 5%)',
             transformOrigin: 'center center'
           }}
         >
