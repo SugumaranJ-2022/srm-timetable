@@ -76,6 +76,7 @@ class Section(Base):
     semester = Column(Integer, nullable=False)
     strength = Column(Integer, nullable=False)
     class_advisor_id = Column(Integer, ForeignKey("staff.id", ondelete="SET NULL"), nullable=True)
+    classroom_id = Column(Integer, ForeignKey("classrooms.id", ondelete="SET NULL"), nullable=True)
     project_days = Column(String(100), default="Monday,Wednesday,Friday")
     enable_zero_free_periods = Column(Boolean, default=True)
     enable_daily_coverage = Column(Boolean, default=True)
@@ -83,6 +84,7 @@ class Section(Base):
 
     # Relationships
     class_advisor = relationship("Staff", back_populates="advised_sections")
+    classroom = relationship("Classroom")
     students = relationship("Student", back_populates="section")
     section_subjects = relationship("SectionSubject", back_populates="section", cascade="all, delete-orphan")
     timetables = relationship("Timetable", back_populates="section", cascade="all, delete-orphan")

@@ -102,6 +102,7 @@ async def create_section(sec: SectionCreate, db: AsyncSession = Depends(get_db),
         semester=sec.semester,
         strength=sec.strength,
         class_advisor_id=sec.class_advisor_id,
+        classroom_id=sec.classroom_id,
         project_days=sec.project_days,
         enable_zero_free_periods=sec.enable_zero_free_periods,
         enable_daily_coverage=sec.enable_daily_coverage,
@@ -283,15 +284,17 @@ async def bulk_import(
             imported_count += 1
 
     elif type == "sections":
-        # Columns: name, semester, strength, class_advisor_id (optional), program, project_days (optional)
+        # Columns: name, semester, strength, class_advisor_id (optional), classroom_id (optional), program, project_days (optional)
         for _, row in df.iterrows():
             advisor_id = int(row["class_advisor_id"]) if pd.notna(row.get("class_advisor_id")) else None
+            classroom_id = int(row["classroom_id"]) if pd.notna(row.get("classroom_id")) else None
             section = Section(
                 name=str(row["name"]),
                 program=str(row.get("program", "MCA")),
                 semester=int(row["semester"]),
                 strength=int(row["strength"]),
                 class_advisor_id=advisor_id,
+                classroom_id=classroom_id,
                 project_days=str(row.get("project_days", "Monday,Wednesday,Friday")),
                 enable_zero_free_periods=True,
                 enable_daily_coverage=True,
@@ -514,6 +517,7 @@ async def import_master(
     if df_secs is not None:
         for _, row in df_secs.iterrows():
             advisor_id = int(row["class_advisor_id"]) if pd.notna(row.get("class_advisor_id")) else None
+            classroom_id = int(row["classroom_id"]) if pd.notna(row.get("classroom_id")) else None
             db.add(Section(
                 id=int(row["id"]),
                 name=str(row["name"]),
@@ -521,6 +525,7 @@ async def import_master(
                 semester=int(row["semester"]),
                 strength=int(row["strength"]),
                 class_advisor_id=advisor_id,
+                classroom_id=classroom_id,
                 project_days=str(row.get("project_days", "Monday,Wednesday,Friday")),
                 enable_zero_free_periods=bool(row.get("enable_zero_free_periods", True)),
                 enable_daily_coverage=bool(row.get("enable_daily_coverage", True)),

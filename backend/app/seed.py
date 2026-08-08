@@ -16,31 +16,43 @@ SUBJECTS_DATA = [
     # code, name, credits, semester, is_project
     # MCA
     ("MCA-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MCA-CQC", "Cryptography & Quantum Computing", 6, 1, False),
+    ("MCA-CQC", "Cryptography & Quantum Computing", 5, 1, False),
     ("MCA-BD", "Big Data", 5, 1, False),
-    ("MCA-CV", "Computer Vision", 6, 1, False),
+    ("MCA-CV", "Computer Vision", 5, 1, False),
     ("MCA-PRJ", "Project", 3, 1, True),
+    ("MCA-VAC", "Value Added Course", 2, 1, False),
     
     # MCA (Gen AI)
     ("MCAGAI-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MCAGAI-CQC", "Cryptography & Quantum Computing", 6, 1, False),
+    ("MCAGAI-CQC", "Cryptography & Quantum Computing", 5, 1, False),
     ("MCAGAI-BD", "Big Data", 5, 1, False),
-    ("MCAGAI-CV", "Computer Vision", 6, 1, False),
+    ("MCAGAI-CV", "Computer Vision", 5, 1, False),
     ("MCAGAI-PRJ", "Project", 3, 1, True),
+    ("MCAGAI-VAC", "Value Added Course", 2, 1, False),
     
     # M.Sc.
     ("MSC-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MSC-CQC", "Cryptography & Quantum Computing", 6, 1, False),
+    ("MSC-CQC", "Cryptography & Quantum Computing", 5, 1, False),
     ("MSC-BD", "Big Data", 5, 1, False),
-    ("MSC-CV", "Computer Vision", 6, 1, False),
+    ("MSC-CV", "Computer Vision", 5, 1, False),
     ("MSC-PRJ", "Project", 3, 1, True),
+    ("MSC-VAC", "Value Added Course", 2, 1, False),
     
     # BCA
     ("BCA-PF", "Programming Fundamentals", 5, 1, False),
-    ("BCA-WD", "Web Development", 6, 1, False),
+    ("BCA-WD", "Web Development", 5, 1, False),
     ("BCA-DBMS", "Database Management Systems", 5, 1, False),
-    ("BCA-CN", "Computer Networks", 6, 1, False),
-    ("BCA-PRJ", "Project", 3, 1, True)
+    ("BCA-CN", "Computer Networks", 5, 1, False),
+    ("BCA-PRJ", "Project", 3, 1, True),
+    ("BCA-VAC", "Value Added Course", 2, 1, False),
+    
+    # BCA (Gen AI)
+    ("BCAGAI-PF", "Programming Fundamentals", 5, 1, False),
+    ("BCAGAI-WD", "Web Development", 5, 1, False),
+    ("BCAGAI-AI", "Artificial Intelligence & Generative AI", 5, 1, False),
+    ("BCAGAI-CN", "Computer Networks", 5, 1, False),
+    ("BCAGAI-PRJ", "Project", 3, 1, True),
+    ("BCAGAI-VAC", "Value Added Course", 2, 1, False)
 ]
 
 SECTIONS_DATA = [
@@ -57,48 +69,67 @@ SECTIONS_DATA = [
     ("M.Sc. B", "MSC", 1, 48),
     ("BCA A", "BCA", 1, 45),
     ("BCA B", "BCA", 1, 48),
-    ("BCA C", "BCA", 1, 42)
+    ("BCA C", "BCA", 1, 42),
+    ("BCA (Gen AI) A", "BCA_GENAI", 1, 40),
+    ("BCA (Gen AI) B", "BCA_GENAI", 1, 42),
+    ("BCA (Gen AI) C", "BCA_GENAI", 1, 38)
 ]
 
 # 45 Custom Staff members
 STAFF_ROSTER = [
+    # MCA
     "Dr. Rajesh Kumar", "Dr. Priya Sharma", "Dr. Arun Alagappan", "Dr. Sandeep Goel",
-    "Dr. Amit Patel", "Dr. Shalini Rao", "Dr. Vikram Seth", "Dr. Pooja Hegde",
+    "Dr. Amit Patel", "Dr. Shalini Rao",
+    # MCA Gen AI
     "Dr. Rajeev Nair", "Dr. Neha Kapoor", "Dr. Preeti Sen", "Dr. Manoj Verma",
-    "Dr. Divya Iyer", "Dr. Harish Joshi", "Dr. Kirti Azad", "Dr. Vivek Oberoi",
+    "Dr. Divya Iyer", "Dr. Harish Joshi",
+    # MSC
     "Dr. Deepa Nair", "Dr. Surya Kumar", "Dr. Fahadh Faasil", "Dr. Mahesh Babu",
-    "Mr. Anand Subramanian", "Mr. Vijay Kulkarni", "Mr. Rajesh Pillai", "Mr. Suresh Raina",
+    "Mr. Anand Subramanian", "Mr. Vijay Kulkarni",
+    # BCA
     "Mr. Nitin Gadkari", "Mr. Sanjay Dutt", "Mr. Rohan Bopanna", "Mr. Tarun Tahiliani",
-    "Mr. Nani Ghose", "Mr. Dulquer Salmaan", "Mr. Nivin Pauly", "Mr. Karthi Sivakumar",
+    "Mr. Nani Ghose", "Mr. Dulquer Salmaan",
+    # BCA Gen AI
     "Ms. Anitha Devi", "Ms. Meena Jasmine", "Ms. Kavitha Rao", "Ms. Anjali Patil",
-    "Ms. Sneha Reddy", "Ms. Archana Puran", "Ms. Gouri Kishan", "Ms. Keerthy Suresh",
-    "Ms. Samantha Ruth", "Ms. Nazriya Nazim", "Ms. Sai Pallavi", "Ms. Parvathy Thiruvothu",
-    "Ms. Jyothika Saravanan"
+    "Ms. Sneha Reddy", "Ms. Archana Puran"
 ]
 
 CLASSROOMS_DATA = [
     # room_number, building, floor, capacity
-    # 20 classrooms to ensure no resource bottlenecks
-    ("LH-101", "Science Block", 1, 60),
-    ("LH-102", "Science Block", 1, 60),
-    ("LH-103", "Science Block", 1, 60),
-    ("LH-104", "Science Block", 1, 60),
-    ("LH-105", "Science Block", 1, 60),
-    ("LH-106", "Science Block", 1, 60),
-    ("LH-107", "Science Block", 1, 60),
-    ("LH-108", "Science Block", 1, 60),
-    ("LH-109", "Science Block", 1, 60),
-    ("LH-110", "Science Block", 1, 60),
-    ("LH-201", "Main Block", 2, 60),
-    ("LH-202", "Main Block", 2, 60),
-    ("LH-203", "Main Block", 2, 60),
-    ("LH-204", "Main Block", 2, 60),
-    ("LH-205", "Main Block", 2, 60),
-    ("LH-206", "Main Block", 2, 60),
-    ("LH-207", "Main Block", 2, 60),
-    ("LH-208", "Main Block", 2, 60),
-    ("LH-209", "Main Block", 2, 60),
-    ("LH-210", "Main Block", 2, 60)
+    # First 10 in FSH block 1
+    ("901", "FSH block 1", 9, 60),
+    ("902", "FSH block 1", 9, 60),
+    ("903", "FSH block 1", 9, 60),
+    ("904", "FSH block 1", 9, 60),
+    ("905", "FSH block 1", 9, 60),
+    ("906", "FSH block 1", 9, 60),
+    ("907", "FSH block 1", 9, 60),
+    ("801", "FSH block 1", 8, 60),
+    ("802", "FSH block 1", 8, 60),
+    ("803", "FSH block 1", 8, 60),
+    # Remaining classes in FSH block 2
+    ("301", "FSH block 2", 3, 60),
+    ("302", "FSH block 2", 3, 60),
+    ("303", "FSH block 2", 3, 60),
+    ("401", "FSH block 2", 4, 60),
+    ("402", "FSH block 2", 4, 60),
+    ("403", "FSH block 2", 4, 60),
+    ("404", "FSH block 2", 4, 60),
+    ("405", "FSH block 2", 4, 60),
+    ("406", "FSH block 2", 4, 60),
+    ("407", "FSH block 2", 4, 60),
+    # Lab classrooms (MCA/MCA Gen AI/MSC in FSH block 1)
+    ("908 Lab", "FSH block 1", 9, 60),
+    ("808 Lab", "FSH block 1", 8, 60),
+    ("708 Lab", "FSH block 1", 7, 60),
+    ("402 Lab", "FSH block 1", 4, 60),
+    ("403 Lab", "FSH block 1", 4, 60),
+    # Lab classrooms (BCA/BCA Gen AI in FSH block 2)
+    ("301 Lab", "FSH block 2", 3, 60),
+    ("302 Lab", "FSH block 2", 3, 60),
+    ("303 Lab", "FSH block 2", 3, 60),
+    ("304 Lab", "FSH block 2", 3, 60),
+    ("404 Lab", "FSH block 2", 4, 60)
 ]
 
 # Time intervals (5 teaching periods/day + 1 Break = 6 slots total)
@@ -220,44 +251,45 @@ async def seed_data():
         # Build local competency mapping for quick lookup
         staff_competency = {}
         for idx, staff in enumerate(staff_list):
-            if idx <= 10:
+            if idx <= 5:
                 # MCA
                 offset = 0
-                idx_in_P = idx
-            elif idx <= 20:
+            elif idx <= 11:
                 # MCA Gen AI
-                offset = 5
-                idx_in_P = idx - 11
-            elif idx <= 30:
+                offset = 6
+            elif idx <= 17:
                 # MSC
-                offset = 10
-                idx_in_P = idx - 21
-            else:
+                offset = 12
+            elif idx <= 23:
                 # BCA
-                offset = 15
-                idx_in_P = idx - 31
+                offset = 18
+            else:
+                # BCA Gen AI
+                offset = 24
             
-            sub1 = subject_list[offset + (idx_in_P % 5)]
-            sub2 = subject_list[offset + ((idx_in_P + 2) % 5)]
-            staff_competency[staff.id] = [sub1.id, sub2.id]
+            # All 6 subjects for this program are added to competency
+            unique_sub_ids = [subject_list[offset + i].id for i in range(6)]
+            staff_competency[staff.id] = unique_sub_ids
             
-            stmt1 = staff_subject_association.insert().values(staff_id=staff.id, subject_id=sub1.id)
-            stmt2 = staff_subject_association.insert().values(staff_id=staff.id, subject_id=sub2.id)
-            await db.execute(stmt1)
-            await db.execute(stmt2)
+            for sub_id in unique_sub_ids:
+                stmt = staff_subject_association.insert().values(staff_id=staff.id, subject_id=sub_id)
+                await db.execute(stmt)
         await db.flush()
 
         # 8. Create Sections
+        non_lab_rooms = [r for r in rooms if "Lab" not in r.room_number]
         sections_dict = {}
         for sname, prog, sem, strength in SECTIONS_DATA:
             # Assign advisor (take first few staff members as advisors)
             advisor = staff_list[len(sections_dict) % len(staff_list)]
+            room = non_lab_rooms[len(sections_dict) % len(non_lab_rooms)]
             sec = Section(
                 name=sname,
                 program=prog,
                 semester=sem,
                 strength=strength,
                 class_advisor_id=advisor.id,
+                classroom_id=room.id,
                 project_days="Monday,Wednesday,Friday",
                 enable_zero_free_periods=True,
                 enable_daily_coverage=True,
@@ -269,34 +301,59 @@ async def seed_data():
 
         # 9. Create SectionSubject mappings (with load balancing)
         staff_load = {staff.id: 0 for staff in staff_list}
+        from collections import defaultdict
+        section_staff_assigned = defaultdict(set)
+        staff_tue_thu_load = {staff.id: 0 for staff in staff_list}
         
+        # Collect all section-subjects to assign
+        all_ss = []
         for sec_name, sec in sections_dict.items():
-            # Assign appropriate subjects to sections based on program
+            # Assign appropriate subjects to sections based on program (6 subjects per program)
             if sec.program == "MCA":
-                sec_subs = subject_list[0:5]
+                sec_subs = subject_list[0:6]
             elif sec.program == "MCA_GENAI":
-                sec_subs = subject_list[5:10]
+                sec_subs = subject_list[6:12]
             elif sec.program == "MSC":
-                sec_subs = subject_list[10:15]
+                sec_subs = subject_list[12:18]
             elif sec.program == "BCA":
-                sec_subs = subject_list[15:20]
+                sec_subs = subject_list[18:24]
+            elif sec.program == "BCA_GENAI":
+                sec_subs = subject_list[24:30]
             else:
                 sec_subs = []
-            
             for sub in sec_subs:
-                # Get qualified teachers for this subject
+                all_ss.append((sec, sub))
+
+        # Sort: credits descending to assign heavier loads first
+        all_ss.sort(key=lambda x: x[1].credits, reverse=True)
+
+        for sec, sub in all_ss:
+            # Get qualified teachers for this subject who are not already teaching in this section
+            already_assigned_staff = section_staff_assigned[sec.id]
+            qualified_staff = [staff for staff in staff_list if sub.id in staff_competency[staff.id] and staff.id not in already_assigned_staff]
+            if not qualified_staff:
                 qualified_staff = [staff for staff in staff_list if sub.id in staff_competency[staff.id]]
-                
-                # Select the qualified teacher with the minimum teaching load
-                assigned_staff = min(qualified_staff, key=lambda s: staff_load[s.id])
-                staff_load[assigned_staff.id] += 1
-                
-                sec_sub = SectionSubject(
-                    section_id=sec.id,
-                    subject_id=sub.id,
-                    assigned_staff_id=assigned_staff.id
-                )
-                db.add(sec_sub)
+            
+            # Select the qualified teacher with the minimum teaching credits, using a custom hash to break ties evenly
+            assigned_staff = min(
+                qualified_staff, 
+                key=lambda s: (staff_tue_thu_load[s.id], staff_load[s.id], (s.id * 12345 + sec.id * 6789) % 10007)
+            )
+            staff_load[assigned_staff.id] += sub.credits
+            section_staff_assigned[sec.id].add(assigned_staff.id)
+            
+            # Update Tue/Thu load: 5-credits -> 2, 2-credits -> 2, 3-credits -> 0
+            if sub.credits == 5:
+                staff_tue_thu_load[assigned_staff.id] += 2
+            elif sub.credits == 2:
+                staff_tue_thu_load[assigned_staff.id] += 2
+            
+            sec_sub = SectionSubject(
+                section_id=sec.id,
+                subject_id=sub.id,
+                assigned_staff_id=assigned_staff.id
+            )
+            db.add(sec_sub)
         await db.flush()
 
         # 10. Seed Mock Students

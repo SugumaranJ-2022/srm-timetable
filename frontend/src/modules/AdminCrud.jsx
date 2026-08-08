@@ -33,7 +33,7 @@ const AdminCrud = () => {
   // Form Inputs State
   const [classroomForm, setClassroomForm] = useState({ room_number: '', building: '', floor: 0, capacity: 40 });
   const [subjectForm, setSubjectForm] = useState({ code: '', name: '', credits: 3, semester: 1, department_id: 1 });
-  const [sectionForm, setSectionForm] = useState({ name: '', semester: 1, strength: 40, class_advisor_id: '' });
+  const [sectionForm, setSectionForm] = useState({ name: '', semester: 1, strength: 40, class_advisor_id: '', classroom_id: '' });
   const [staffForm, setStaffForm] = useState({ name: '', email: '', password: 'Password123!', phone: '', subject_ids: [] });
   const [secSubForm, setSecSubForm] = useState({ section_id: '', subject_id: '', assigned_staff_id: '' });
 
@@ -185,7 +185,8 @@ const AdminCrud = () => {
     e.preventDefault();
     try {
       const advId = sectionForm.class_advisor_id ? parseInt(sectionForm.class_advisor_id) : null;
-      await adminApi.createSection({ ...sectionForm, class_advisor_id: advId });
+      const roomId = sectionForm.classroom_id ? parseInt(sectionForm.classroom_id) : null;
+      await adminApi.createSection({ ...sectionForm, class_advisor_id: advId, classroom_id: roomId });
       setSuccess('Section profile created successfully!');
       setShowAddForm(false);
       loadData();
@@ -242,7 +243,8 @@ const AdminCrud = () => {
       { key: 'name', header: 'Section Name' },
       { key: 'semester', header: 'Semester' },
       { key: 'strength', header: 'Cohort Size' },
-      { key: 'class_advisor_id', header: 'Class Advisor ID' }
+      { key: 'classroom_id', header: 'Designated Room', render: (row) => classrooms.find(c => c.id === row.classroom_id)?.room_number || 'None' },
+      { key: 'class_advisor_id', header: 'Class Advisor', render: (row) => staff.find(s => s.id === row.class_advisor_id)?.name || 'None' }
     ],
     mappings: [
       { key: 'section_id', header: 'Section ID', render: (row) => sections.find(s => s.id === row.section_id)?.name || row.section_id },
@@ -702,6 +704,19 @@ const AdminCrud = () => {
                     <option value="">No Advisor Assigned</option>
                     {staff.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-650 dark:text-slate-400 mb-1">Designated Classroom</label>
+                  <select
+                    value={sectionForm.classroom_id}
+                    onChange={(e) => setSectionForm({ ...sectionForm, classroom_id: e.target.value })}
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-slate-850 dark:text-slate-200 focus:ring-2 focus:ring-brand-500 text-sm"
+                  >
+                    <option value="">No Classroom Designated</option>
+                    {classrooms.map(c => (
+                      <option key={c.id} value={c.id}>{c.room_number} (Cap: {c.capacity})</option>
                     ))}
                   </select>
                 </div>

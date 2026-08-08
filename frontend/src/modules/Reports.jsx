@@ -264,9 +264,9 @@ const Reports = () => {
               timeslots={timeslots}
               isEditable={false}
               projectDays={
-                targetType === 'section' && selectedId && sections.find(s => s.id === parseInt(selectedId))?.project_days
-                  ? sections.find(s => s.id === parseInt(selectedId)).project_days.split(',')
-                  : ['Monday', 'Wednesday', 'Friday']
+                targetType === 'section'
+                  ? (sections.find(s => s.id === parseInt(selectedId))?.project_days?.split(',') || ['Monday', 'Wednesday', 'Friday'])
+                  : []
               }
             />
           </div>

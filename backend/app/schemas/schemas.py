@@ -98,6 +98,7 @@ class SectionBase(BaseModel):
     semester: int
     strength: int
     class_advisor_id: Optional[int] = None
+    classroom_id: Optional[int] = None
     project_days: Optional[str] = "Monday,Wednesday,Friday"
     enable_zero_free_periods: Optional[bool] = True
     enable_daily_coverage: Optional[bool] = True

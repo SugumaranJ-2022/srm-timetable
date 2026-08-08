@@ -6,6 +6,7 @@ import Dashboard from './modules/Dashboard';
 import TimetableEditor from './modules/TimetableEditor';
 import AdminCrud from './modules/AdminCrud';
 import Reports from './modules/Reports';
+import AcademicCalendar from './modules/AcademicCalendar';
 import TimetableGrid from './components/TimetableGrid';
 import { timetableApi } from './services/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,7 +21,9 @@ import {
   Sun,
   Moon,
   CheckCircle,
-  X
+  X,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const bicycleVariants = {
@@ -56,7 +59,7 @@ const AppContent = () => {
 
   // Background slideshow index
   const [bgIndex, setBgIndex] = useState(0);
-  const backgrounds = ['/srm_gate.png', '/srm_techpark.png'];
+  const backgrounds = ['/srm_3d_cover.png', '/srm_gate.png', '/srm_techpark.png'];
 
   React.useEffect(() => {
     const timer = setInterval(() => {
@@ -93,6 +96,7 @@ const AppContent = () => {
   const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -213,38 +217,38 @@ const AppContent = () => {
         </header>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-sm bg-white/75 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-8 backdrop-blur-xl shadow-xl relative z-20 overflow-hidden"
+          className="w-full max-w-md bg-white/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/5 relative z-20 overflow-hidden"
         >
           <AnimatePresence mode="wait">
             {loginView === 'login' ? (
               <motion.div
                 key="login-view"
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.25 }}
               >
                 {/* Header */}
-                <div className="flex flex-col items-center mb-6 relative">
-                  {/* SRM University Logo without White Bubble background wrapper */}
+                <div className="flex flex-col items-center mb-8 relative">
                   <img
                     src="/srm_logo.png"
                     alt="SRM Logo"
-                    className="h-12 object-contain mb-4 filter dark:brightness-110"
+                    className="h-14 object-contain mb-4 filter dark:brightness-110"
                   />
-                  <h1 className="text-3xl font-extrabold text-slate-850 dark:text-white tracking-wide text-center">
-                    Sign In
+                  <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
+                    Sign In to Timetable
                   </h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Enter your credential details to proceed</p>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <form onSubmit={handleLoginSubmit} className="space-y-5">
                   {showLogoutMessage && logoutDetails && (
-                    <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-xl text-left relative">
-                      <div className="font-bold mb-1 flex items-center gap-1.5 text-green-805 dark:text-green-300">
+                    <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
+                      <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
                         <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                         Logged Out Successfully
                       </div>
@@ -252,13 +256,13 @@ const AppContent = () => {
                         Thank you for using the Smart Timetable ERP Portal. Your session has been safely closed.
                       </p>
                       <div className="text-[9px] text-slate-400 dark:text-slate-550 border-t border-green-500/10 pt-1.5 flex flex-wrap justify-between gap-1">
-                        <span>Account: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.email}</span></span>
+                        <span>Account: <span className="font-semibold text-slate-550 dark:text-slate-400">{logoutDetails.email}</span></span>
                         <span>Time: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.time}</span></span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setShowLogoutMessage(false)}
-                        className="absolute top-2.5 right-2.5 text-slate-450 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-400 cursor-pointer"
+                        className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -266,51 +270,72 @@ const AppContent = () => {
                   )}
 
                   {loginError && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-650 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
                       {loginError}
                     </div>
                   )}
 
-                  <div className="space-y-3.5">
-                    {/* Username Input */}
-                    <input
-                      type="email"
-                      required
-                      placeholder="Username"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setShowLogoutMessage(false);
-                      }}
-                      className="w-full bg-white dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 border border-slate-200 dark:border-slate-800/80 py-3.5 px-5 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 text-sm font-semibold transition-all shadow-sm"
-                    />
+                  <div className="space-y-4">
+                    {/* Username Input Container */}
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      </span>
+                      <input
+                        type="email"
+                        required
+                        placeholder="Username (Email)"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setShowLogoutMessage(false);
+                        }}
+                        className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                      />
+                    </div>
 
-                    {/* Password Input */}
-                    <input
-                      type="password"
-                      required
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setShowLogoutMessage(false);
-                      }}
-                      className="w-full bg-white dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-550 border border-slate-200 dark:border-slate-800/80 py-3.5 px-5 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 text-sm font-semibold transition-all shadow-sm"
-                    />
+                    {/* Password Input Container */}
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                      </span>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setShowLogoutMessage(false);
+                        }}
+                        className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Login Submit Button */}
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-2 py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
+                    className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100"
                   >
-                    Login
+                    {isSubmitting ? 'Signing In...' : 'Sign In'}
                   </button>
                 </form>
 
                 {/* Forget Password & Signup Links */}
-                <div className="flex items-center justify-between px-1 mt-4 text-xs font-bold text-slate-500 dark:text-slate-350 select-none">
+                <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
                   <button
                     onClick={() => {
                       setLoginError('');
@@ -319,7 +344,7 @@ const AppContent = () => {
                     }}
                     className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
                   >
-                    Forget Password
+                    Forget Password?
                   </button>
                   <button
                     onClick={() => {
@@ -329,13 +354,13 @@ const AppContent = () => {
                     }}
                     className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
                   >
-                    Signup
+                    Create Account
                   </button>
                 </div>
 
                 {/* Quick Demo Pre-fills */}
-                <div className="mt-8 border-t border-slate-200 dark:border-slate-800/80 pt-5">
-                  <p className="text-center text-[9px] uppercase font-bold tracking-widest text-slate-450 dark:text-slate-550 mb-2.5">Quick Login Selector</p>
+                <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                  <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-500 mb-3">Quick Login Selector</p>
                   <select
                     onChange={(e) => {
                       const val = e.target.value;
@@ -346,7 +371,7 @@ const AppContent = () => {
                       setShowLogoutMessage(false);
                     }}
                     value={email ? `${email}|${password}` : ''}
-                    className="w-full bg-slate-50/80 dark:bg-slate-950/30 text-slate-700 dark:text-slate-350 border border-slate-200 dark:border-slate-800/60 rounded-lg px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
+                    className="w-full bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-350 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
                   >
                     <option value="">-- Choose a Seeded Account --</option>
                     <optgroup label="System Administrator">
@@ -373,6 +398,9 @@ const AppContent = () => {
                       <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
                       <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
                       <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
+                      <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
+                      <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
+                      <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
                     </optgroup>
                   </select>
                 </div>
@@ -449,7 +477,7 @@ const AppContent = () => {
   // Helper to render active view/module content
   const renderContent = () => {
     if (activeTab === 'dashboard') {
-      return <Dashboard />;
+      return <Dashboard setActiveTab={setActiveTab} />;
     }
 
     // Admin routes
@@ -492,7 +520,10 @@ const AppContent = () => {
       }
     }
 
-    return <Dashboard />;
+    // All-role calendar route
+    if (activeTab === 'calendar') return <AcademicCalendar />;
+
+    return <Dashboard setActiveTab={setActiveTab} />;
   };
 
   if (user && showWelcome) {

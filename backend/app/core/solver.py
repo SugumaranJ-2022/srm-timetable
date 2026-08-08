@@ -47,6 +47,22 @@ async def generate_timetable_csp(
             "message": "Insufficient data (sections, timeslots, or section-subjects missing) to run the solver."
         }
 
+    # Pre-check: Designated Homerooms Capacity
+    classrooms_dict = {r.id: r for r in classrooms}
+    for s in sections:
+        if s.classroom_id is not None:
+            target_room = classrooms_dict.get(s.classroom_id)
+            if not target_room:
+                return {
+                    "success": False,
+                    "message": f"Designated classroom ID {s.classroom_id} for Section {s.name} is either inactive, unavailable, or does not exist."
+                }
+            if s.strength > target_room.capacity:
+                return {
+                    "success": False,
+                    "message": f"Designated classroom {target_room.room_number} capacity ({target_room.capacity}) is insufficient for Section {s.name} strength ({s.strength})."
+                }
+
     # Group SectionSubjects by section
     sec_sub_map = defaultdict(list)
     for ss in section_subjects:
@@ -64,20 +80,41 @@ async def generate_timetable_csp(
     # 2. Decision Variables
     # X[s, t, sub_id] = 1 if section s has subject sub_id at timeslot t
     X = {}
+    X_theory = {}
+    X_lab = {}
     # Y[s, t, r_id] = 1 if section s is in classroom r_id at timeslot t (only for Regular/Online where classroom is used)
     Y = {}
+    # Z[s, r] = 1 if section s is assigned to classroom r as its fixed homeroom
+    Z = {}
 
     # Define variables
+    # Find lab classrooms for Z definition
+    fsh1_labs = [r.id for r in classrooms if r.building == "FSH block 1" and r.room_number in ["908 Lab", "808 Lab", "708 Lab", "402 Lab", "403 Lab"]]
+    fsh2_labs = [r.id for r in classrooms if r.building == "FSH block 2" and r.room_number in ["301 Lab", "302 Lab", "303 Lab", "304 Lab", "404 Lab"]]
+    all_labs = fsh1_labs + fsh2_labs
+
     for s in sections:
+        # Homeroom assignment variables (exclude lab classrooms)
+        for r in classrooms:
+            if s.strength <= r.capacity and r.id not in all_labs:
+                Z[(s.id, r.id)] = model.NewBoolVar(f"Z_{s.id}_{r.id}")
+
         # Non-break timeslots
         active_slots = [t for t in timeslots if t.slot_type != "Break"]
         ss_list = sec_sub_map[s.id]
         
         for t in active_slots:
             for ss in ss_list:
+                # Theory and Lab variables for subject
+                var_theory_name = f"X_theory_{s.id}_{t.id}_{ss.subject_id}"
+                var_lab_name = f"X_lab_{s.id}_{t.id}_{ss.subject_id}"
+                X_theory[(s.id, t.id, ss.subject_id)] = model.NewBoolVar(var_theory_name)
+                X_lab[(s.id, t.id, ss.subject_id)] = model.NewBoolVar(var_lab_name)
+                
                 # Variable X[section, timeslot, subject]
                 var_name = f"X_{s.id}_{t.id}_{ss.subject_id}"
                 X[(s.id, t.id, ss.subject_id)] = model.NewBoolVar(var_name)
+                model.Add(X[(s.id, t.id, ss.subject_id)] == X_theory[(s.id, t.id, ss.subject_id)] + X_lab[(s.id, t.id, ss.subject_id)])
             
             # Classroom assignment variables (only for Regular slots)
             if t.slot_type == "Regular":
@@ -89,7 +126,61 @@ async def generate_timetable_csp(
 
     # 3. Hard Constraints
 
-    # 3. Hard Constraints
+    # Homeroom Constraints:
+    # 1. Each section must be assigned exactly one fixed homeroom.
+    for s in sections:
+        z_vars = [Z[(s.id, r.id)] for r in classrooms if (s.id, r.id) in Z]
+        if z_vars:
+            model.Add(sum(z_vars) == 1)
+        if s.classroom_id is not None:
+            if (s.id, s.classroom_id) in Z:
+                model.Add(Z[(s.id, s.classroom_id)] == 1)
+
+    # 2. Exclusivity: Each classroom is assigned to at most one section (if enough classrooms exist).
+    unique_rooms = len(classrooms) >= len(sections)
+    for r in classrooms:
+        z_vars = [Z[(s.id, r.id)] for s in sections if (s.id, r.id) in Z]
+        if z_vars and unique_rooms:
+            model.Add(sum(z_vars) <= 1)
+
+    # Find lab classrooms
+    fsh1_labs = [r.id for r in classrooms if r.building == "FSH block 1" and r.room_number in ["908 Lab", "808 Lab", "708 Lab", "402 Lab", "403 Lab"]]
+    fsh2_labs = [r.id for r in classrooms if r.building == "FSH block 2" and r.room_number in ["301 Lab", "302 Lab", "303 Lab", "304 Lab", "404 Lab"]]
+
+    # 3. Link Timeslot Room Assignment (Y) to Homeroom (Z) / Lab Classrooms depending on slot type (Theory vs Lab)
+    for s in sections:
+        if s.program in ["MCA", "MCA_GENAI", "MSC"]:
+            s_lab_room_ids = fsh1_labs
+        else:
+            s_lab_room_ids = fsh2_labs
+            
+        if not s_lab_room_ids:
+            s_lab_room_ids = [r.id for r in classrooms]
+            
+        active_slots = [t for t in timeslots if t.slot_type == "Regular"]
+        ss_list = sec_sub_map[s.id]
+        
+        for t in active_slots:
+            for ss in ss_list:
+                x_theory_var = X_theory[(s.id, t.id, ss.subject_id)]
+                x_lab_var = X_lab[(s.id, t.id, ss.subject_id)]
+                
+                # If theory is scheduled, the section must be in its homeroom Z
+                for r in classrooms:
+                    if (s.id, t.id, r.id) in Y and (s.id, r.id) in Z:
+                        model.Add(Y[(s.id, t.id, r.id)] == Z[(s.id, r.id)]).OnlyEnforceIf(x_theory_var)
+                
+                # If lab is scheduled, the section must be in one of its program's lab rooms
+                # For non-lab rooms, Y must be 0
+                for r in classrooms:
+                    if (s.id, t.id, r.id) in Y:
+                        if r.id not in s_lab_room_ids:
+                            model.Add(Y[(s.id, t.id, r.id)] == 0).OnlyEnforceIf(x_lab_var)
+                
+                # Exactly one lab room must be assigned from s_lab_room_ids
+                lab_y_vars = [Y[(s.id, t.id, r_id)] for r_id in s_lab_room_ids if (s.id, t.id, r_id) in Y]
+                if lab_y_vars:
+                    model.Add(sum(lab_y_vars) == 1).OnlyEnforceIf(x_lab_var)
 
     # Constraint 1 & 2: Section Overlap, Break Integrity, and Zero Free-Period (Rule 7)
     # For each section and timeslot, exactly 1 subject is scheduled if zero-free-period is enabled.
@@ -137,14 +228,24 @@ async def generate_timetable_csp(
     # Constraint 6: Volumetric Check is already handled by not creating Y variables where strength > capacity.
 
     # Constraint 8: Credit Hours Target
-    # For each section and subject, schedule exactly the required credits (hours)
+    # For each section and subject, schedule exactly 3 theory credits and 2 lab credits (or 3/0 for project)
     for s in sections:
         ss_list = sec_sub_map[s.id]
         for ss in ss_list:
             sub = subjects_dict[ss.subject_id]
             possible_slots = [t for t in timeslots if t.slot_type != "Break"]
-            sub_vars = [X[(s.id, t.id, ss.subject_id)] for t in possible_slots if (s.id, t.id, ss.subject_id) in X]
-            model.Add(sum(sub_vars) == sub.credits)
+            theory_vars = [X_theory[(s.id, t.id, ss.subject_id)] for t in possible_slots if (s.id, t.id, ss.subject_id) in X_theory]
+            lab_vars = [X_lab[(s.id, t.id, ss.subject_id)] for t in possible_slots if (s.id, t.id, ss.subject_id) in X_lab]
+            
+            if sub.is_project:
+                model.Add(sum(theory_vars) == 3)
+                model.Add(sum(lab_vars) == 0)
+            elif sub.credits == 2:
+                model.Add(sum(theory_vars) == 2)
+                model.Add(sum(lab_vars) == 0)
+            else:
+                model.Add(sum(theory_vars) == 3)
+                model.Add(sum(lab_vars) == 2)
 
     # Group timeslots by day for daily constraints
     day_groups = defaultdict(list)
@@ -162,7 +263,7 @@ async def generate_timetable_csp(
                 if not day_sub_vars:
                     continue
 
-                if not sub.is_project:
+                if not sub.is_project and sub.credits >= 5:
                     if s.enable_daily_coverage:
                         # Rule 8: Every non-project subject must appear at least once every day
                         model.Add(sum(day_sub_vars) >= 1)

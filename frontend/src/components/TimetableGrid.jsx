@@ -1,8 +1,12 @@
 import React from 'react';
-import { Monitor, MapPin, Coffee, AlertCircle } from 'lucide-react';
+import { Monitor, MapPin, Coffee, AlertCircle, FlaskConical } from 'lucide-react';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const PERIODS = [1, 2, 3, 4, 5, 6];
+const TODAY_NAME = (() => {
+  const d = new Date().getDay();
+  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
+})();
 
 // Helper to convert subject code string into a stable hex color value
 export const getStableColor = (str) => {
@@ -102,11 +106,28 @@ const TimetableGrid = ({
 
         {/* Calendar Matrix Rows */}
         <tbody className="divide-y divide-slate-200 dark:divide-slate-800/40">
-          {DAYS_OF_WEEK.map((day) => (
-            <tr key={day} className="hover:bg-slate-200/20 dark:hover:bg-slate-800/5 transition-colors">
+          {DAYS_OF_WEEK.map((day) => {
+            const isToday = day === TODAY_NAME;
+            return (
+            <tr key={day} className={`transition-colors ${
+              isToday
+                ? 'bg-brand-500/5 dark:bg-brand-500/5 hover:bg-brand-500/8'
+                : 'hover:bg-slate-200/20 dark:hover:bg-slate-800/5'
+            }`}>
               {/* Day Label Cell */}
-              <td className="px-4 py-6 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100/30 dark:bg-slate-950/10">
-                {day}
+              <td className={`px-4 py-6 text-sm font-semibold ${
+                isToday
+                  ? 'text-brand-700 dark:text-brand-300 bg-brand-500/10 dark:bg-brand-500/10'
+                  : 'text-slate-700 dark:text-slate-300 bg-slate-100/30 dark:bg-slate-950/10'
+              }`}>
+                <div className="flex flex-col gap-1">
+                  <span>{day}</span>
+                  {isToday && (
+                    <span className="text-[8px] font-extrabold bg-brand-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide w-fit animate-pulse">
+                      Today
+                    </span>
+                  )}
+                </div>
               </td>
 
               {/* Grid Period Cells */}
@@ -133,15 +154,29 @@ const TimetableGrid = ({
 
                 if (detail) {
                   const isProjectSub = detail.subject_name?.toLowerCase().includes('project') || detail.subject_code?.toLowerCase().includes('prj');
-                  const cardBg = isProjectSub ? 'rgba(239, 68, 68, 0.12)' : getStableColor(detail.subject_code);
-                  const cardBorder = isProjectSub ? 'rgba(239, 68, 68, 0.45)' : getStableBorderColor(detail.subject_code);
+                  const isLabSub = detail.room_number?.toLowerCase().includes('lab');
+                  const isVAC = detail.subject_code?.toLowerCase().includes('vac');
+                  const cardBg = isProjectSub
+                    ? 'rgba(239, 68, 68, 0.12)'
+                    : isLabSub
+                    ? 'rgba(20, 184, 166, 0.13)'
+                    : isVAC
+                    ? 'rgba(168, 85, 247, 0.13)'
+                    : getStableColor(detail.subject_code);
+                  const cardBorder = isProjectSub
+                    ? 'rgba(239, 68, 68, 0.45)'
+                    : isLabSub
+                    ? 'rgba(20, 184, 166, 0.55)'
+                    : isVAC
+                    ? 'rgba(168, 85, 247, 0.45)'
+                    : getStableBorderColor(detail.subject_code);
                   
                   content = (
                     <div 
                       style={{ backgroundColor: cardBg, borderColor: cardBorder }}
                       className={`p-2.5 rounded-xl border flex flex-col h-full justify-between transition-all duration-200 select-none shadow-sm ${
                         isEditable ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02]' : ''
-                      } ${isProjectSub ? 'ring-1 ring-red-500/20' : ''}`}
+                      } ${isProjectSub ? 'ring-1 ring-red-500/20' : ''} ${isLabSub ? 'ring-1 ring-teal-500/25' : ''} ${isVAC ? 'ring-1 ring-purple-500/20' : ''}`}
                     >
                       <div className="flex justify-between items-start gap-1">
                         <div className="font-bold text-xs text-slate-800 dark:text-white tracking-wide truncate">
@@ -151,10 +186,16 @@ const TimetableGrid = ({
                           <span className="text-[8px] font-extrabold text-red-600 dark:text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded border border-red-500/35 uppercase select-none">
                             Proj
                           </span>
+                        ) : isLabSub ? (
+                          <span className="text-base leading-none select-none" title="Lab Session">🖥️</span>
+                        ) : isVAC ? (
+                          <span className="text-[8px] font-extrabold text-purple-600 dark:text-purple-400 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/35 uppercase select-none">
+                            VAC
+                          </span>
                         ) : slotType === 'Online' ? (
                           <Monitor className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
                         ) : (
-                          <MapPin className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                          <span className="text-base leading-none select-none" title="Theory Class">📚</span>
                         )}
                       </div>
                       
@@ -166,9 +207,15 @@ const TimetableGrid = ({
                         <span className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[80px]">
                           {detail.staff_name}
                         </span>
-                        <span className="font-bold text-brand-700 dark:text-brand-300 bg-brand-500/10 px-1.5 py-0.5 rounded border border-brand-500/15">
-                          {detail.room_number || 'Online'}
-                        </span>
+                        {isLabSub ? (
+                          <span className="flex items-center gap-1 font-bold text-teal-700 dark:text-teal-300 bg-teal-500/15 px-1.5 py-0.5 rounded border border-teal-500/30">
+                            🖥️ {detail.room_number}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-brand-700 dark:text-brand-300 bg-brand-500/10 px-1.5 py-0.5 rounded border border-brand-500/15">
+                            {detail.room_number || 'Online'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -207,7 +254,8 @@ const TimetableGrid = ({
                 );
               })}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

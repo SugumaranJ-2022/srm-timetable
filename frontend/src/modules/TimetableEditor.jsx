@@ -170,14 +170,17 @@ const TimetableEditor = () => {
   // Cell Interaction click - opens Modal
   const handleCellClick = ({ day, periodNum, timeslotId, detail, timeslotObj }) => {
     setActiveCellEdit({ day, periodNum, timeslotId, detail, timeslotObj });
+    const currentSection = sections.find(s => s.id === parseInt(selectedSectionId));
+    const defaultRoomId = (timeslotObj?.slot_type === 'Regular' && currentSection?.classroom_id) ? currentSection.classroom_id.toString() : '';
+
     if (detail) {
       setSelectedSubId(detail.subject_id);
       setSelectedStaffId(detail.staff_id);
-      setSelectedRoomId(detail.classroom_id || '');
+      setSelectedRoomId(detail.classroom_id ? detail.classroom_id.toString() : defaultRoomId);
     } else {
       setSelectedSubId('');
       setSelectedStaffId('');
-      setSelectedRoomId('');
+      setSelectedRoomId(defaultRoomId);
     }
   };
 
@@ -332,21 +335,21 @@ const TimetableEditor = () => {
             <div className="bg-slate-100/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800/60 p-4 rounded-2xl text-center">
               <div className="text-[10px] text-slate-550 dark:text-slate-400 font-bold uppercase tracking-wider">Zero Free Period</div>
               <div className="text-lg font-extrabold text-green-600 dark:text-green-400 mt-1">
-                {generationMetrics.zero_free_period_compliance} / 13
+                {generationMetrics.zero_free_period_compliance} / {sections.length}
               </div>
               <div className="text-[9px] text-slate-500 mt-0.5">Sections compliant</div>
             </div>
             <div className="bg-slate-100/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800/60 p-4 rounded-2xl text-center">
               <div className="text-[10px] text-slate-550 dark:text-slate-400 font-bold uppercase tracking-wider">Project Cadence</div>
               <div className="text-lg font-extrabold text-brand-600 dark:text-brand-400 mt-1">
-                {generationMetrics.project_cadence_compliance} / 13
+                {generationMetrics.project_cadence_compliance} / {sections.length}
               </div>
               <div className="text-[9px] text-slate-500 mt-0.5">Sections compliant</div>
             </div>
             <div className="bg-slate-100/50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800/60 p-4 rounded-2xl text-center">
               <div className="text-[10px] text-slate-550 dark:text-slate-400 font-bold uppercase tracking-wider">Daily Coverage</div>
               <div className="text-lg font-extrabold text-brand-600 dark:text-brand-400 mt-1">
-                {generationMetrics.daily_coverage_compliance} / 13
+                {generationMetrics.daily_coverage_compliance} / {sections.length}
               </div>
               <div className="text-[9px] text-slate-500 mt-0.5">Sections compliant</div>
             </div>
@@ -489,17 +492,30 @@ const TimetableEditor = () => {
                   {activeCellEdit.timeslotObj?.slot_type === 'Regular' && (
                     <div>
                       <label className="block text-xs text-slate-650 dark:text-slate-400 mb-1">Classroom Room</label>
-                      <select
-                        required
-                        value={selectedRoomId}
-                        onChange={(e) => setSelectedRoomId(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-slate-850 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
-                      >
-                        <option value="">Select Room</option>
-                        {classroomsList.map(r => (
-                          <option key={r.id} value={r.id}>{r.room_number} (Cap: {r.capacity})</option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const currentSection = sections.find(s => s.id === parseInt(selectedSectionId));
+                        if (currentSection && currentSection.classroom_id) {
+                          const desRoom = classroomsList.find(r => r.id === currentSection.classroom_id);
+                          return (
+                            <div className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-slate-750 dark:text-slate-350 text-sm font-semibold">
+                              {desRoom ? `${desRoom.room_number} (Cap: ${desRoom.capacity})` : 'Designated Homeroom'}
+                            </div>
+                          );
+                        }
+                        return (
+                          <select
+                            required
+                            value={selectedRoomId}
+                            onChange={(e) => setSelectedRoomId(e.target.value)}
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3 py-2 text-slate-850 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"
+                          >
+                            <option value="">Select Room</option>
+                            {classroomsList.map(r => (
+                              <option key={r.id} value={r.id}>{r.room_number} (Cap: {r.capacity})</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
                   )}
                 </>

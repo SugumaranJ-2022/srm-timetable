@@ -229,6 +229,20 @@ async def validate_override(
                 offending_ids=[prop_d.classroom_id]
             ))
 
+    # 3.5. Homeroom Mismatch Check: Must remain in designated classroom
+    for timeslot_id, prop_d in proposed_details_by_slot.items():
+        ts = timeslots_map.get(timeslot_id)
+        if ts and ts.slot_type == "Regular" and target_section and target_section.classroom_id is not None:
+            if prop_d.classroom_id != target_section.classroom_id:
+                room = classrooms_map.get(target_section.classroom_id)
+                room_num = room.room_number if room else "designated classroom"
+                conflicts.append(ConflictDetail(
+                    type="HomeroomMismatch",
+                    description=f"Homeroom Mismatch: Section {target_section.name} students must remain in their designated classroom {room_num}.",
+                    timeslot_id=timeslot_id,
+                    offending_ids=[prop_d.classroom_id] if prop_d.classroom_id else []
+                ))
+
     # 4. Break Integrity Rule: Break timeslots must remain empty
     for timeslot_id, prop_d in proposed_details_by_slot.items():
         ts = timeslots_map.get(timeslot_id)
