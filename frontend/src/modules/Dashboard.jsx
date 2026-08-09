@@ -26,7 +26,7 @@ import {
   X
 } from 'lucide-react';
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ================= Helpers =================
 const getStaffGaps = (schedule) => {
   const dayMap = {};
   schedule.forEach(item => {
@@ -69,12 +69,12 @@ const getStaffFreeSlots = (schedule) => {
 };
 
 const PERIOD_RANGES = {
-  1: { start: 8 * 60 + 15, end: 9 * 60, label: '08:15 â€“ 09:00' },
-  2: { start: 9 * 60, end: 9 * 60 + 45, label: '09:00 â€“ 09:45' },
-  3: { start: 9 * 60 + 45, end: 10 * 60 + 30, label: '09:45 â€“ 10:30' },
-  4: { start: 10 * 60 + 30, end: 11 * 60, label: '10:30 â€“ 11:00', isBreak: true },
-  5: { start: 11 * 60, end: 11 * 60 + 45, label: '11:00 â€“ 11:45' },
-  6: { start: 11 * 60 + 45, end: 12 * 60 + 30, label: '11:45 â€“ 12:30' },
+  1: { start: 8 * 60 + 15, end: 9 * 60, label: '08:15 - 09:00' },
+  2: { start: 9 * 60, end: 9 * 60 + 45, label: '09:00 - 09:45' },
+  3: { start: 9 * 60 + 45, end: 10 * 60 + 30, label: '09:45 - 10:30' },
+  4: { start: 10 * 60 + 30, end: 11 * 60, label: '10:30 - 11:00', isBreak: true },
+  5: { start: 11 * 60, end: 11 * 60 + 45, label: '11:00 - 11:45' },
+  6: { start: 11 * 60 + 45, end: 12 * 60 + 30, label: '11:45 - 12:30' },
 };
 
 const PROGRAMS = [
@@ -85,7 +85,7 @@ const PROGRAMS = [
   { key: 'BCA_GENAI', label: 'BCA (Gen AI)', color: 'from-orange-500 to-amber-500', text: 'text-orange-600 dark:text-orange-400', sections: ['BCA (Gen AI) A', 'BCA (Gen AI) B', 'BCA (Gen AI) C'] },
 ];
 
-// â”€â”€â”€ Stat Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ================= Stat Card Component =================
 const StatCard = ({ icon: Icon, label, value, sub, iconBg, accentRgb, onClick }) => (
   <div 
     onClick={onClick}
@@ -219,7 +219,7 @@ const Dashboard = ({ setActiveTab }) => {
 
       {user.role === 'Admin' ? (
         <>
-          {/* â”€â”€ Stat Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ================= Stat Cards ================= */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard icon={Users} label="Faculty" value={stats.staffCount} sub="Active and tracked" iconBg="bg-indigo-500" accentRgb="99,102,241" onClick={() => { setActiveModal('faculty'); setModalSearch(''); }} />
             <StatCard icon={GraduationCap} label="Students" value={stats.studentCount} sub={`In ${stats.sectionsCount} sections`} iconBg="bg-emerald-500" accentRgb="16,185,129" onClick={() => { setActiveModal('students'); setModalSearch(''); }} />
@@ -228,7 +228,7 @@ const Dashboard = ({ setActiveTab }) => {
             <StatCard icon={BookOpen} label="Subjects" value={stats.subjectCount} sub="Credit-mapped syllabus" iconBg="bg-violet-500" accentRgb="139,92,246" onClick={() => { setActiveModal('subjects'); setModalSearch(''); }} />
           </div>
 
-          {/* â”€â”€ Program Distribution + Today Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ================= Program Distribution + Today Timeline ================= */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Program Distribution */}
@@ -281,7 +281,7 @@ const Dashboard = ({ setActiveTab }) => {
                             : isDone ? 'bg-green-500/20 text-green-500'
                               : 'bg-slate-200/50 dark:bg-slate-800/50 text-slate-400'
                         }`}>
-                        {isBreak ? 'â˜•' : isDone ? 'âœ“' : isActive ? 'â–¶' : period < 4 ? period : period - 1}
+                        {isBreak ? '' : period < 4 ? period : period - 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-xs font-bold truncate ${isActive ? 'text-brand-700 dark:text-brand-300' : isDone ? 'text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-300'}`}>
@@ -297,7 +297,7 @@ const Dashboard = ({ setActiveTab }) => {
             </div>
           </div>
 
-          {/* â”€â”€ System Status + Quick Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ================= System Status + Quick Actions ================= */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* System Status */}
             <div className="lg:col-span-2 glass-card p-6 rounded-3xl">
@@ -311,7 +311,7 @@ const Dashboard = ({ setActiveTab }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { icon: CheckCircle, label: 'Database Connected', sub: 'SQLite + SQLAlchemy async', color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/15' },
-                  { icon: Zap, label: 'CP-SAT Solver Active', sub: 'Google OR-Tools â€” Running', color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/15' },
+                  { icon: Zap, label: 'CP-SAT Solver Active', sub: 'Google OR-Tools - Running', color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/15' },
                   { icon: CheckCircle, label: 'Zero Free-Period Policy', sub: 'All 25 periods occupied', color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/15' },
                   { icon: FlaskConical, label: 'Lab / Theory Routing', sub: 'Room segregation enforced', color: 'text-teal-500', bg: 'bg-teal-500/10 border-teal-500/15' },
                 ].map((item, i) => (
@@ -356,7 +356,7 @@ const Dashboard = ({ setActiveTab }) => {
           </div>
         </>
       ) : (
-        // â”€â”€ Staff / Student Personal View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ================= Staff / Student Personal View =================
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           <div className="lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-brand-500/20 shadow-glass">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl" />
@@ -382,11 +382,11 @@ const Dashboard = ({ setActiveTab }) => {
                   </div>
                   <div>
                     <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Schedule</span>
-                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.day_of_week || 'Today'} â€“ Period {activeSession.data.period_number}</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.day_of_week || 'Today'} - Period {activeSession.data.period_number}</div>
                   </div>
                   <div>
                     <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Instructor</span>
-                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.staff_name || 'â€”'}</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.staff_name || 'N/A'}</div>
                   </div>
                 </div>
               </div>
@@ -406,7 +406,7 @@ const Dashboard = ({ setActiveTab }) => {
               <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
                 <Clock className="w-12 h-12 text-slate-400 dark:text-slate-500" />
                 <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">No Active Classes</h4>
-                <p className="text-slate-500 dark:text-slate-450 text-sm">Sessions held Monâ€“Fri, 08:15 AM â€“ 12:30 PM.</p>
+                <p className="text-slate-500 dark:text-slate-450 text-sm">Sessions held Mon-Fri, 08:15 AM - 12:30 PM.</p>
               </div>
             )}
           </div>
