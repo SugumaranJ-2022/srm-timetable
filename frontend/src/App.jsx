@@ -419,7 +419,7 @@ const AppContent = () => {
                     {adminTimetables.map((item, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleSelectTimetable(item.email, item.password)}
+                        onClick={() => handleSelectTimetable('', '')}
                         className="w-full text-left px-3 py-2.5 text-[11px] font-black text-white hover:text-white hover:bg-red-500/25 rounded-xl transition-all duration-150 border border-transparent hover:border-red-500/40 flex items-center gap-2 cursor-pointer"
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
@@ -588,7 +588,7 @@ const AppContent = () => {
                           {adminTimetables.map((item, idx) => (
                             <button
                               key={idx}
-                              onClick={() => handleSelectTimetable(item.email, item.password)}
+                              onClick={() => handleSelectTimetable('', '')}
                               className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
                             >
                               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
