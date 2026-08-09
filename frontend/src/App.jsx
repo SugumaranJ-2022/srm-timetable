@@ -185,7 +185,7 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className={`min-h-screen relative flex items-center p-4 transition-all duration-500 ease-in-out overflow-hidden select-none ${isExpanded ? 'justify-center' : 'justify-center md:justify-start md:pl-20 lg:pl-32'}`}>
+      <div className="min-h-screen relative flex justify-center md:justify-end items-center p-4 md:pr-20 lg:pr-32 transition-colors duration-300 overflow-hidden select-none">
 
         {/* Video Background */}
         <video
