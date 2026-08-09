@@ -80,7 +80,32 @@ const staffTimetables = [
   { name: "Dr. Priya Sharma", email: "drpriyasharma@college.edu", password: "Staff123!" },
   { name: "Dr. Arun Alagappan", email: "drarunalagappan@college.edu", password: "Staff123!" },
   { name: "Dr. Sandeep Goel", email: "drsandeepgoel@college.edu", password: "Staff123!" },
-  { name: "Dr. Amit Patel", email: "dramitpatel@college.edu", password: "Staff123!" }
+  { name: "Dr. Amit Patel", email: "dramitpatel@college.edu", password: "Staff123!" },
+  { name: "Dr. Shalini Rao", email: "drshalinirao@college.edu", password: "Staff123!" },
+  { name: "Dr. Rajeev Nair", email: "drrajeevnair@college.edu", password: "Staff123!" },
+  { name: "Dr. Neha Kapoor", email: "drnehakapoor@college.edu", password: "Staff123!" },
+  { name: "Dr. Preeti Sen", email: "drpreetisen@college.edu", password: "Staff123!" },
+  { name: "Dr. Manoj Verma", email: "drmanojverma@college.edu", password: "Staff123!" },
+  { name: "Dr. Divya Iyer", email: "drdivyaiyer@college.edu", password: "Staff123!" },
+  { name: "Dr. Harish Joshi", email: "drharishjoshi@college.edu", password: "Staff123!" },
+  { name: "Dr. Deepa Nair", email: "drdeepanair@college.edu", password: "Staff123!" },
+  { name: "Dr. Surya Kumar", email: "drsuryakumar@college.edu", password: "Staff123!" },
+  { name: "Dr. Fahadh Faasil", email: "drfahadhfaasil@college.edu", password: "Staff123!" },
+  { name: "Dr. Mahesh Babu", email: "drmaheshbabu@college.edu", password: "Staff123!" },
+  { name: "Mr. Anand Subramanian", email: "mranandsubramanian@college.edu", password: "Staff123!" },
+  { name: "Mr. Vijay Kulkarni", email: "mrvijaykulkarni@college.edu", password: "Staff123!" },
+  { name: "Mr. Nitin Gadkari", email: "mrnitingadkari@college.edu", password: "Staff123!" },
+  { name: "Mr. Sanjay Dutt", email: "mrsanjaydutt@college.edu", password: "Staff123!" },
+  { name: "Mr. Rohan Bopanna", email: "mrrohanbopanna@college.edu", password: "Staff123!" },
+  { name: "Mr. Tarun Tahiliani", email: "mrtaruntahiliani@college.edu", password: "Staff123!" },
+  { name: "Mr. Nani Ghose", email: "mrnanighose@college.edu", password: "Staff123!" },
+  { name: "Mr. Dulquer Salmaan", email: "mrdulquersalmaan@college.edu", password: "Staff123!" },
+  { name: "Ms. Anitha Devi", email: "msanithadevi@college.edu", password: "Staff123!" },
+  { name: "Ms. Meena Jasmine", email: "msmeenajasmine@college.edu", password: "Staff123!" },
+  { name: "Ms. Kavitha Rao", email: "mskavitharao@college.edu", password: "Staff123!" },
+  { name: "Ms. Anjali Patil", email: "msanjalipatil@college.edu", password: "Staff123!" },
+  { name: "Ms. Sneha Reddy", email: "mssnehareddy@college.edu", password: "Staff123!" },
+  { name: "Ms. Archana Puran", email: "msarchanapuran@college.edu", password: "Staff123!" }
 ];
 
 const adminTimetables = [
@@ -130,6 +155,14 @@ const AppContent = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdownState] = useState(null); // 'class' | 'staff' | 'admin' | null
+  const [classSearchQuery, setClassSearchQuery] = useState('');
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
+
+  const handleDropdownToggle = (type) => {
+    setActiveDropdownState(activeDropdown === type ? null : type);
+    setClassSearchQuery('');
+    setStaffSearchQuery('');
+  };
 
   const handleSelectTimetable = (emailVal, passwordVal) => {
     setEmail(emailVal);
@@ -140,6 +173,8 @@ const AppContent = () => {
     setIsExpanded(true);
     setActiveDropdownState(null);
     setMobileMenuOpen(false);
+    setClassSearchQuery('');
+    setStaffSearchQuery('');
   };
 
   React.useEffect(() => {
@@ -282,8 +317,8 @@ const AppContent = () => {
               {/* Class Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setActiveDropdownState(activeDropdown === 'class' ? null : 'class')}
-                  onMouseEnter={() => setActiveDropdownState('class')}
+                  onClick={() => handleDropdownToggle('class')}
+                  onMouseEnter={() => handleDropdownToggle('class')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
                   <Calendar className="w-3.5 h-3.5" />
@@ -292,19 +327,32 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'class' && (
                   <div
-                    onMouseLeave={() => setActiveDropdownState(null)}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 grid grid-cols-2 gap-2 z-50 animate-fade-in"
+                    onMouseLeave={() => handleDropdownToggle(null)}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2.5 z-50 animate-fade-in"
                   >
-                    {classTimetables.map((item, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSelectTimetable(item.email, item.password)}
-                        className="text-left px-3 py-2 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-brand-500/20 rounded-xl transition-all duration-150 border border-transparent hover:border-brand-500/30 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
-                        {item.name}
-                      </button>
-                    ))}
+                    <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        placeholder="Search Class/Section..."
+                        value={classSearchQuery}
+                        onChange={(e) => setClassSearchQuery(e.target.value)}
+                        className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                      {classTimetables
+                        .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
+                        .map((item, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectTimetable(item.email, item.password)}
+                            className="text-left px-3 py-2 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-brand-500/20 rounded-xl transition-all duration-150 border border-transparent hover:border-brand-500/30 flex items-center gap-2 cursor-pointer"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+                            {item.name}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -312,8 +360,8 @@ const AppContent = () => {
               {/* Staff Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setActiveDropdownState(activeDropdown === 'staff' ? null : 'staff')}
-                  onMouseEnter={() => setActiveDropdownState('staff')}
+                  onClick={() => handleDropdownToggle('staff')}
+                  onMouseEnter={() => handleDropdownToggle('staff')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
                   <Users className="w-3.5 h-3.5" />
@@ -322,19 +370,32 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'staff' && (
                   <div
-                    onMouseLeave={() => setActiveDropdownState(null)}
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-3 flex flex-col gap-1 z-50 animate-fade-in"
+                    onMouseLeave={() => handleDropdownToggle(null)}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2.5 z-50 animate-fade-in"
                   >
-                    {staffTimetables.map((item, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleSelectTimetable(item.email, item.password)}
-                        className="text-left px-3 py-2 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-brand-500/20 rounded-xl transition-all duration-150 border border-transparent hover:border-brand-500/30 flex items-center gap-2 cursor-pointer"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
-                        {item.name}
-                      </button>
-                    ))}
+                    <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        placeholder="Search Staff Member..."
+                        value={staffSearchQuery}
+                        onChange={(e) => setStaffSearchQuery(e.target.value)}
+                        className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-64 overflow-y-auto pr-1">
+                      {staffTimetables
+                        .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
+                        .map((item, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleSelectTimetable(item.email, item.password)}
+                            className="text-left px-3 py-2 text-[11px] font-bold text-slate-200 hover:text-white hover:bg-brand-500/20 rounded-xl transition-all duration-150 border border-transparent hover:border-brand-500/30 flex items-center gap-2 cursor-pointer"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
+                            {item.name}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -342,8 +403,8 @@ const AppContent = () => {
               {/* Admin Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setActiveDropdownState(activeDropdown === 'admin' ? null : 'admin')}
-                  onMouseEnter={() => setActiveDropdownState('admin')}
+                  onClick={() => handleDropdownToggle('admin')}
+                  onMouseEnter={() => handleDropdownToggle('admin')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
                   <UserCheck className="w-3.5 h-3.5" />
@@ -352,7 +413,7 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'admin' && (
                   <div
-                    onMouseLeave={() => setActiveDropdownState(null)}
+                    onMouseLeave={() => handleDropdownToggle(null)}
                     className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-2.5 z-50 animate-fade-in"
                   >
                     {adminTimetables.map((item, idx) => (
@@ -411,7 +472,7 @@ const AppContent = () => {
                   {/* Class Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => setActiveDropdownState(activeDropdown === 'class' ? null : 'class')}
+                      onClick={() => handleDropdownToggle('class')}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -426,18 +487,31 @@ const AppContent = () => {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="pl-4 py-1.5 grid grid-cols-2 gap-2 overflow-hidden"
+                          className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
                         >
-                          {classTimetables.map((item, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleSelectTimetable(item.email, item.password)}
-                              className="text-left py-2 px-2.5 text-xs text-slate-350 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                              {item.name}
-                            </button>
-                          ))}
+                          <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              placeholder="Search Class..."
+                              value={classSearchQuery}
+                              onChange={(e) => setClassSearchQuery(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                            {classTimetables
+                              .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
+                              .map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  className="text-left py-2 px-2.5 text-xs text-slate-350 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                  {item.name}
+                                </button>
+                              ))}
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -446,7 +520,7 @@ const AppContent = () => {
                   {/* Staff Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => setActiveDropdownState(activeDropdown === 'staff' ? null : 'staff')}
+                      onClick={() => handleDropdownToggle('staff')}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -461,18 +535,31 @@ const AppContent = () => {
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="pl-4 py-1.5 flex flex-col gap-1 overflow-hidden"
+                          className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
                         >
-                          {staffTimetables.map((item, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleSelectTimetable(item.email, item.password)}
-                              className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                              {item.name}
-                            </button>
-                          ))}
+                          <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              placeholder="Search Staff..."
+                              value={staffSearchQuery}
+                              onChange={(e) => setStaffSearchQuery(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                            {staffTimetables
+                              .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
+                              .map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                  {item.name}
+                                </button>
+                              ))}
+                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -481,7 +568,7 @@ const AppContent = () => {
                   {/* Admin Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => setActiveDropdownState(activeDropdown === 'admin' ? null : 'admin')}
+                      onClick={() => handleDropdownToggle('admin')}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -710,6 +797,31 @@ const AppContent = () => {
                           <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
                           <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
                           <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
+                          <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao (drshalinirao@)</option>
+                          <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair (drrajeevnair@)</option>
+                          <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor (drnehakapoor@)</option>
+                          <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen (drpreetisen@)</option>
+                          <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma (drmanojverma@)</option>
+                          <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer (drdivyaiyer@)</option>
+                          <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi (drharishjoshi@)</option>
+                          <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair (drdeepanair@)</option>
+                          <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar (drsuryakumar@)</option>
+                          <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil (drfahadhfaasil@)</option>
+                          <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu (drmaheshbabu@)</option>
+                          <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian (mranandsubramanian@)</option>
+                          <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni (mrvijaykulkarni@)</option>
+                          <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari (mrnitingadkari@)</option>
+                          <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt (mrsanjaydutt@)</option>
+                          <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna (mrrohanbopanna@)</option>
+                          <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani (mrtaruntahiliani@)</option>
+                          <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose (mrnanighose@)</option>
+                          <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan (mrdulquersalmaan@)</option>
+                          <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi (msanithadevi@)</option>
+                          <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine (msmeenajasmine@)</option>
+                          <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao (mskavitharao@)</option>
+                          <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil (msanjalipatil@)</option>
+                          <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy (mssnehareddy@)</option>
+                          <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran (msarchanapuran@)</option>
                         </optgroup>
                         <optgroup label="Enrolled Students (Class/Section-wise)">
                           <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
