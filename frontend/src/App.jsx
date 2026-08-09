@@ -219,17 +219,6 @@ const AppContent = () => {
 
         {/* SRM Header/Navbar */}
         <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col">
-          {/* Row 1: Utility Links (hidden on mobile, flex on desktop) */}
-          <div className="w-full bg-slate-950/75 backdrop-blur-sm border-b border-white/10 py-2.5 px-6 sm:px-12 hidden md:flex justify-end gap-5 text-[11.5px] font-black text-white select-none tracking-wider">
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Library</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Career Centre</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">News</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Events</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Blog</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Careers</span>
-            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Contact us</span>
-          </div>
-
           {/* Row 2: Main Menu */}
           <div className="w-full bg-slate-900/85 backdrop-blur-md py-4 px-6 sm:px-12 flex items-center justify-between border-b border-white/15 shadow-xl">
             {/* Left: Logo & SRM Branding */}
@@ -239,15 +228,6 @@ const AppContent = () => {
                 <span className="text-sm font-black tracking-wider leading-none uppercase text-white drop-shadow-md">SRM</span>
                 <span className="text-[9px] font-black tracking-widest text-slate-100 uppercase mt-0.5 drop-shadow-sm">Institute of Science & Technology</span>
               </div>
-            </div>
-
-            {/* Center: Navigation Menu Links (hidden on mobile/tablet) */}
-            <div className="hidden lg:flex items-center gap-8 text-xs font-black tracking-widest text-white uppercase">
-              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Academics</span>
-              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Research</span>
-              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Campus Life</span>
-              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">International</span>
-              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">About</span>
             </div>
 
             {/* Right: Theme Toggle & Sign In Action */}
@@ -299,27 +279,6 @@ const AppContent = () => {
                 transition={{ duration: 0.3 }}
                 className="w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden lg:hidden"
               >
-                {/* Main Links */}
-                <div className="flex flex-col gap-4 border-b border-white/10 pb-5">
-                  <p className="text-[9px] uppercase font-extrabold tracking-widest text-slate-400">Main Menu</p>
-                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Academics</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Research</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Campus Life</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">International</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">About</span>
-                </div>
-
-                {/* Utility Links */}
-                <div className="flex flex-wrap gap-x-4 gap-y-2.5 border-b border-white/10 pb-5 text-xs font-bold text-slate-300">
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Library</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Career Centre</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">News</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Events</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Blog</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Careers</span>
-                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Contact us</span>
-                </div>
-
                 {/* Theme & Actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
