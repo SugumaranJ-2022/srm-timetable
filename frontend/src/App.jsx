@@ -600,18 +600,21 @@ const AppContent = () => {
   if (user && showWelcome) {
     return (
       <div className="min-h-screen relative flex justify-center items-center p-4 transition-colors duration-300 overflow-hidden select-none">
-        {/* Slideshow background images with absolute fade-in/fade-out */}
-        {backgrounds.map((bg, idx) => (
-          <div
-            key={bg}
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-[1500ms] ease-in-out"
-            style={{
-              backgroundImage: `url('${bg}')`,
-              opacity: bgIndex === idx ? 1 : 0,
-              zIndex: 0
-            }}
-          ></div>
-        ))}
+        {/* Video Background */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+          style={{
+            transform: 'scale(1.25) translate(4%, 5%)',
+            transformOrigin: 'center center'
+          }}
+        >
+          <source src="/video.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
 
         {/* Dynamic Light/Dark Overlay Mask */}
         <div className="absolute inset-0 bg-white/70 dark:bg-[#070b13]/85 backdrop-blur-[2px] transition-colors duration-300 z-10"></div>
