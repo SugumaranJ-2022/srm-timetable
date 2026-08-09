@@ -185,7 +185,7 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className="min-h-screen relative flex justify-center md:justify-start items-center p-4 md:pl-20 lg:pl-32 transition-colors duration-300 overflow-hidden select-none">
+      <div className={`min-h-screen relative flex items-center p-4 transition-all duration-500 ease-in-out overflow-hidden select-none ${isExpanded ? 'justify-center' : 'justify-center md:justify-start md:pl-20 lg:pl-32'}`}>
 
         {/* Video Background */}
         <video
@@ -194,6 +194,7 @@ const AppContent = () => {
           loop
           muted
           playsInline
+          onClick={() => setIsExpanded(false)}
           className="absolute inset-0 w-full h-full object-cover z-0"
           style={{
             transform: 'scale(1.25) translate(4%, 5%)',
@@ -205,20 +206,29 @@ const AppContent = () => {
         </video>
 
         {/* Dynamic Light/Dark Overlay Mask */}
-        <div className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/50 transition-colors duration-300 z-10"></div>
+        <div 
+          onClick={() => setIsExpanded(false)}
+          className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/50 transition-colors duration-300 z-10"
+        ></div>
 
         {/* Full-width Top Navigation Bar */}
-        <header className="absolute top-0 left-0 right-0 w-full px-16 py-4 flex items-center justify-center z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md transition-colors duration-300">
+        <header 
+          onClick={() => setIsExpanded(false)}
+          className="absolute top-0 left-0 right-0 w-full px-16 py-4 flex items-center justify-center z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md transition-colors duration-300"
+        >
           {/* Centered Institution Name */}
           <span className="text-slate-850 dark:text-white font-black text-xs sm:text-sm md:text-lg lg:text-xl tracking-wider uppercase text-center truncate max-w-full px-4">
             SRM Institute of Science and Technology (KTR) Faculty of Science and Humanities
           </span>
 
-          {/* Top-Right Theme Toggle (Absolutely positioned on the right) */}
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 shrink-0 z-10">
+          {/* Top-Right Theme Toggle */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-6 top-1/2 -translate-y-1/2 shrink-0 z-10"
+          >
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-yellow-400 border border-slate-200/50 dark:border-slate-800/80 shadow-sm transition-all duration-300"
+              className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-yellow-400 border border-slate-200/50 dark:border-slate-800/80 shadow-sm transition-all duration-300 cursor-pointer"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-brand-500" />}
             </button>
@@ -229,7 +239,7 @@ const AppContent = () => {
           initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md bg-white/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/5 relative z-20 overflow-hidden"
+          className={`w-full bg-white/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl backdrop-blur-2xl shadow-2xl shadow-brand-500/5 relative z-20 overflow-hidden transition-all duration-500 ${isExpanded ? 'max-w-md p-8' : 'max-w-xs md:max-w-sm p-6'}`}
         >
           <AnimatePresence mode="wait">
             {loginView === 'login' ? (
