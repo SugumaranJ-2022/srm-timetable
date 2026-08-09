@@ -81,6 +81,7 @@ const AppContent = () => {
         time: new Date().toLocaleTimeString()
       });
       setShowLogoutMessage(true);
+      setIsExpanded(false);
     }
     setPrevUser(user);
   }, [user, prevUser]);
@@ -92,6 +93,7 @@ const AppContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   React.useEffect(() => {
     if (videoRef.current) {
@@ -239,7 +241,7 @@ const AppContent = () => {
                 transition={{ duration: 0.25 }}
               >
                 {/* Header */}
-                <div className="flex flex-col items-center mb-8 relative">
+                <div className="flex flex-col items-center mb-6 relative select-none">
                   <img
                     src="/srm_logo.png"
                     alt="SRM Logo"
@@ -248,11 +250,33 @@ const AppContent = () => {
                   <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
                     Sign In to Timetable
                   </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Enter your credential details to proceed</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Click below to access your portal dashboard</p>
                 </div>
 
-                {/* Form */}
-                <form onSubmit={handleLoginSubmit} className="space-y-5">
+                {!isExpanded && (
+                  <div className="flex justify-center mt-6">
+                    <button
+                      type="button"
+                      onClick={() => setIsExpanded(true)}
+                      className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold tracking-wide shadow-lg shadow-brand-500/25 hover:shadow-brand-500/35 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group cursor-pointer"
+                    >
+                      <span>Sign In to Timetable</span>
+                      <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </button>
+                  </div>
+                )}
+
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.4, ease: "easeInOut" }}
+                      className="overflow-hidden"
+                    >
+                      {/* Form */}
+                      <form onSubmit={handleLoginSubmit} className="space-y-5 mt-2">
                   {showLogoutMessage && logoutDetails && (
                     <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
                       <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
@@ -411,6 +435,9 @@ const AppContent = () => {
                     </optgroup>
                   </select>
                 </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ) : loginView === 'forgot' ? (
               <motion.div
