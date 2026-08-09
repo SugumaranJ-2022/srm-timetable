@@ -185,7 +185,7 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className="min-h-screen relative flex justify-center items-center p-4 transition-colors duration-300 overflow-hidden select-none">
+      <div className="min-h-screen relative flex justify-center items-center pt-32 pb-8 p-4 transition-colors duration-300 overflow-hidden select-none">
 
         {/* Video Background */}
         <video
