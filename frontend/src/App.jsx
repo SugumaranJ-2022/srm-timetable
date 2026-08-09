@@ -383,19 +383,6 @@ const AppContent = () => {
                 {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
               </button>
 
-              {/* Sign In to Timetable Button (Desktop & Tablet) */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMobileMenuOpen(false);
-                  setIsExpanded(true);
-                }}
-                className="hidden sm:flex py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white font-black text-xs tracking-wider uppercase shadow-xl shadow-brand-500/35 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 items-center gap-1.5 cursor-pointer"
-              >
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>Sign In to Timetable</span>
-              </button>
-
               {/* Mobile Menu Toggle (Visible below lg) */}
               <button
                 onClick={(e) => {
@@ -528,31 +515,17 @@ const AppContent = () => {
                 </div>
 
                 {/* Theme & Actions */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black uppercase text-slate-350">App Theme</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleTheme();
-                      }}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
-                      <span className="text-[10px] font-black uppercase">{theme === 'dark' ? 'Light' : 'Dark'}</span>
-                    </button>
-                  </div>
-
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-black uppercase text-slate-350">App Theme</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMobileMenuOpen(false);
-                      setIsExpanded(true);
+                      toggleTheme();
                     }}
-                    className="py-2 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-brand-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    <GraduationCap className="w-3.5 h-3.5" />
-                    <span>Sign In</span>
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
+                    <span className="text-[10px] font-black uppercase">{theme === 'dark' ? 'Light' : 'Dark'}</span>
                   </button>
                 </div>
               </motion.div>
