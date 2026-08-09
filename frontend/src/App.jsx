@@ -185,7 +185,7 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className="min-h-screen relative flex justify-center md:justify-end items-center p-4 md:pr-20 lg:pr-32 transition-colors duration-300 overflow-hidden select-none">
+      <div className="min-h-screen relative flex justify-center items-center p-4 transition-colors duration-300 overflow-hidden select-none">
 
         {/* Video Background */}
         <video
@@ -195,7 +195,7 @@ const AppContent = () => {
           muted
           playsInline
           onClick={() => setIsExpanded(false)}
-          className="absolute inset-0 w-full h-full object-cover z-0"
+          className="absolute inset-0 w-full h-full object-cover z-0 cursor-pointer"
           style={{
             transform: 'scale(1.25) translate(4%, 5%)',
             transformOrigin: 'center center'
@@ -208,312 +208,339 @@ const AppContent = () => {
         {/* Dynamic Light/Dark Overlay Mask */}
         <div 
           onClick={() => setIsExpanded(false)}
-          className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/50 transition-colors duration-300 z-10"
+          className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/55 transition-colors duration-300 z-10 cursor-pointer"
         ></div>
 
-        {/* Full-width Top Navigation Bar */}
-        <header 
-          onClick={() => setIsExpanded(false)}
-          className="absolute top-0 left-0 right-0 w-full px-16 py-4 flex items-center justify-center z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-md transition-colors duration-300"
-        >
-          {/* Centered Institution Name */}
-          <span className="text-slate-850 dark:text-white font-black text-xs sm:text-sm md:text-lg lg:text-xl tracking-wider uppercase text-center truncate max-w-full px-4">
-            SRM Institute of Science and Technology (KTR) Faculty of Science and Humanities
-          </span>
+        {/* SRM Header/Navbar */}
+        <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col">
+          {/* Row 1: Utility Links */}
+          <div className="w-full bg-slate-950/45 border-b border-white/5 py-2 px-6 sm:px-12 flex justify-end gap-5 text-[11px] font-bold text-slate-300 select-none">
+            <span className="hover:text-white transition-colors cursor-pointer">Library</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Career Centre</span>
+            <span className="hover:text-white transition-colors cursor-pointer">News</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Events</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Blog</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Careers</span>
+            <span className="hover:text-white transition-colors cursor-pointer">Contact us</span>
+          </div>
 
-          {/* Top-Right Theme Toggle */}
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-6 top-1/2 -translate-y-1/2 shrink-0 z-10"
-          >
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-yellow-400 border border-slate-200/50 dark:border-slate-800/80 shadow-sm transition-all duration-300 cursor-pointer"
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-brand-500" />}
-            </button>
+          {/* Row 2: Main Menu */}
+          <div className="w-full bg-slate-950/20 py-4 px-6 sm:px-12 flex items-center justify-between border-b border-white/10">
+            {/* Left: Logo & SRM Branding */}
+            <div className="flex items-center gap-3">
+              <img src="/srm_logo.png" alt="SRM Logo" className="h-12 object-contain filter brightness-0 invert" />
+              <div className="hidden md:flex flex-col text-white">
+                <span className="text-sm font-black tracking-wider leading-none uppercase">SRM</span>
+                <span className="text-[9px] font-bold tracking-widest text-slate-350 uppercase mt-0.5">Institute of Science & Technology</span>
+              </div>
+            </div>
+
+            {/* Center: Navigation Menu Links */}
+            <div className="hidden lg:flex items-center gap-7 text-xs font-black tracking-widest text-white/95 uppercase">
+              <span className="hover:text-brand-400 transition-colors cursor-pointer">Academics</span>
+              <span className="hover:text-brand-400 transition-colors cursor-pointer">Research</span>
+              <span className="hover:text-brand-400 transition-colors cursor-pointer">Campus Life</span>
+              <span className="hover:text-brand-400 transition-colors cursor-pointer">International</span>
+              <span className="hover:text-brand-400 transition-colors cursor-pointer">About</span>
+            </div>
+
+            {/* Right: Theme Toggle & Sign In Action */}
+            <div className="flex items-center gap-4">
+              {/* Light/Dark Toggle */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheme();
+                }}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all cursor-pointer"
+              >
+                {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-400" />}
+              </button>
+
+              {/* Sign In to Timetable Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                }}
+                className="py-2.5 px-5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5 cursor-pointer"
+              >
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>Sign In to Timetable</span>
+              </button>
+            </div>
           </div>
         </header>
 
-        <motion.div
-          initial={{ opacity: 0, y: 25 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={`w-full bg-white/80 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl backdrop-blur-2xl shadow-2xl shadow-brand-500/5 relative z-20 overflow-hidden transition-all duration-500 ${isExpanded ? 'max-w-md p-8' : 'max-w-xs md:max-w-sm p-6'}`}
-        >
-          <AnimatePresence mode="wait">
-            {loginView === 'login' ? (
-              <motion.div
-                key="login-view"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
+        {/* Expanded Login Card (Centers on Page) */}
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full max-w-md bg-white/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/10 relative z-25 overflow-hidden animate-fade-in"
+            >
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsExpanded(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-655 dark:text-slate-500 dark:hover:text-slate-350 transition-colors cursor-pointer"
               >
-                {/* Header */}
-                <div className="flex flex-col items-center mb-6 relative select-none">
-                  <img
-                    src="/srm_logo.png"
-                    alt="SRM Logo"
-                    className="h-14 object-contain mb-4 filter dark:brightness-110"
-                  />
-                  <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
-                    Sign In to Timetable
-                  </h1>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Click below to access your portal dashboard</p>
-                </div>
+                <X className="w-4 h-4" />
+              </button>
 
-                {!isExpanded && (
-                  <div className="flex justify-center mt-6">
+              <AnimatePresence mode="wait">
+                {loginView === 'login' ? (
+                  <motion.div
+                    key="login-view"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {/* Header */}
+                    <div className="flex flex-col items-center mb-6 relative select-none">
+                      <img
+                        src="/srm_logo.png"
+                        alt="SRM Logo"
+                        className="h-14 object-contain mb-4 filter dark:brightness-110"
+                      />
+                      <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
+                        Sign In to Timetable
+                      </h1>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Enter your credential details to proceed</p>
+                    </div>
+
+                    {/* Form */}
+                    <form onSubmit={handleLoginSubmit} className="space-y-5">
+                      {showLogoutMessage && logoutDetails && (
+                        <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
+                          <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
+                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            Logged Out Successfully
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                            Thank you for using the Smart Timetable ERP Portal. Your session has been safely closed.
+                          </p>
+                          <div className="text-[9px] text-slate-400 dark:text-slate-550 border-t border-green-500/10 pt-1.5 flex flex-wrap justify-between gap-1">
+                            <span>Account: <span className="font-semibold text-slate-550 dark:text-slate-400">{logoutDetails.email}</span></span>
+                            <span>Time: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.time}</span></span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowLogoutMessage(false)}
+                            className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      {loginError && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
+                          {loginError}
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        {/* Username Input Container */}
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Mail className="w-4 h-4 text-slate-400 dark:text-slate-550" />
+                          </span>
+                          <input
+                            type="email"
+                            required
+                            placeholder="Username (Email)"
+                            value={email}
+                            onChange={(e) => {
+                              setEmail(e.target.value);
+                              setShowLogoutMessage(false);
+                            }}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                          />
+                        </div>
+
+                        {/* Password Input Container */}
+                        <div className="relative">
+                          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Lock className="w-4 h-4 text-slate-400 dark:text-slate-550" />
+                          </span>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => {
+                              setPassword(e.target.value);
+                              setShowLogoutMessage(false);
+                            }}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 cursor-pointer"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Login Submit Button */}
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
+                      >
+                        {isSubmitting ? 'Signing In...' : 'Sign In'}
+                      </button>
+                    </form>
+
+                    {/* Forget Password & Signup Links */}
+                    <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
+                      <button
+                        onClick={() => {
+                          setLoginError('');
+                          setLoginView('forgot');
+                          setShowLogoutMessage(false);
+                        }}
+                        className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                      >
+                        Forget Password?
+                      </button>
+                      <button
+                        onClick={() => {
+                          setLoginError('');
+                          setLoginView('signup');
+                          setShowLogoutMessage(false);
+                        }}
+                        className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                      >
+                        Create Account
+                      </button>
+                    </div>
+
+                    {/* Quick Demo Pre-fills */}
+                    <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                      <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-500 mb-3">Quick Login Selector</p>
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (!val) return;
+                          const [emailVal, pwdVal] = val.split('|');
+                          setEmail(emailVal);
+                          setPassword(pwdVal);
+                          setShowLogoutMessage(false);
+                        }}
+                        value={email ? `${email}|${password}` : ''}
+                        className="w-full bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-350 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="">-- Choose a Seeded Account --</option>
+                        <optgroup label="System Administrator">
+                          <option value="admin@college.edu|Admin123!">Admin Portal (admin@college.edu)</option>
+                        </optgroup>
+                        <optgroup label="Faculty Teachers (Staff)">
+                          <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
+                          <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
+                          <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
+                          <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
+                          <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
+                        </optgroup>
+                        <optgroup label="Enrolled Students (Class/Section-wise)">
+                          <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
+                          <option value="student.mcab@college.edu|Student123!">MCA Section B (student.mcab@)</option>
+                          <option value="student.mcac@college.edu|Student123!">MCA Section C (student.mcac@)</option>
+                          <option value="student.mcad@college.edu|Student123!">MCA Section D (student.mcad@)</option>
+                          <option value="student.mcae@college.edu|Student123!">MCA Section E (student.mcae@)</option>
+                          <option value="student.mcagenaia@college.edu|Student123!">MCA (Gen AI) Section A (student.mcagenaia@)</option>
+                          <option value="student.mcagenaib@college.edu|Student123!">MCA (Gen AI) Section B (student.mcagenaib@)</option>
+                          <option value="student.mcagenaic@college.edu|Student123!">MCA (Gen AI) Section C (student.mcagenaic@)</option>
+                          <option value="student.msca@college.edu|Student123!">M.Sc. Section A (student.msca@)</option>
+                          <option value="student.mscb@college.edu|Student123!">M.Sc. Section B (student.mscb@)</option>
+                          <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
+                          <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
+                          <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
+                          <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
+                          <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
+                          <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
+                        </optgroup>
+                      </select>
+                    </div>
+                  </motion.div>
+                ) : loginView === 'forgot' ? (
+                  <motion.div
+                    key="forgot-view"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col items-center text-center py-4"
+                  >
+                    {/* SRM University Logo */}
+                    <img
+                      src="/srm_logo.png"
+                      alt="SRM Logo"
+                      className="h-12 object-contain mb-6 filter dark:brightness-110"
+                    />
+                    <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
+                      <ShieldCheck className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                    </div>
+                    <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
+                      Contact Admin
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
+                      Please contact the System Administrator to reset your password.
+                    </p>
                     <button
-                      type="button"
-                      onClick={() => setIsExpanded(true)}
-                      className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 text-white font-bold tracking-wide shadow-lg shadow-brand-500/25 hover:shadow-brand-500/35 transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group cursor-pointer"
+                      onClick={() => setLoginView('login')}
+                      className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
                     >
-                      <span>Sign In to Timetable</span>
-                      <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+                      Back to Sign In
                     </button>
-                  </div>
-                )}
-
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.4, ease: "easeInOut" }}
-                      className="overflow-hidden"
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="signup-view"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.25 }}
+                    className="flex flex-col items-center text-center py-4"
+                  >
+                    {/* SRM University Logo */}
+                    <img
+                      src="/srm_logo.png"
+                      alt="SRM Logo"
+                      className="h-12 object-contain mb-6 filter dark:brightness-110"
+                    />
+                    <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
+                      <Sparkles className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                    </div>
+                    <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
+                      Account Registration
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
+                      Please contact the System Administrator to create a new portal account.
+                    </p>
+                    <button
+                      onClick={() => setLoginView('login')}
+                      className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
                     >
-                      {/* Form */}
-                      <form onSubmit={handleLoginSubmit} className="space-y-5 mt-2">
-                  {showLogoutMessage && logoutDetails && (
-                    <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
-                      <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
-                        <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                        Logged Out Successfully
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
-                        Thank you for using the Smart Timetable ERP Portal. Your session has been safely closed.
-                      </p>
-                      <div className="text-[9px] text-slate-400 dark:text-slate-550 border-t border-green-500/10 pt-1.5 flex flex-wrap justify-between gap-1">
-                        <span>Account: <span className="font-semibold text-slate-550 dark:text-slate-400">{logoutDetails.email}</span></span>
-                        <span>Time: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.time}</span></span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowLogoutMessage(false)}
-                        className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-
-                  {loginError && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
-                      {loginError}
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    {/* Username Input Container */}
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Mail className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                      </span>
-                      <input
-                        type="email"
-                        required
-                        placeholder="Username (Email)"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          setShowLogoutMessage(false);
-                        }}
-                        className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
-                      />
-                    </div>
-
-                    {/* Password Input Container */}
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Lock className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                      </span>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          setShowLogoutMessage(false);
-                        }}
-                        className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="w-4 h-4" />
-                        ) : (
-                          <Eye className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Login Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100"
-                  >
-                    {isSubmitting ? 'Signing In...' : 'Sign In'}
-                  </button>
-                </form>
-
-                {/* Forget Password & Signup Links */}
-                <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
-                  <button
-                    onClick={() => {
-                      setLoginError('');
-                      setLoginView('forgot');
-                      setShowLogoutMessage(false);
-                    }}
-                    className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
-                  >
-                    Forget Password?
-                  </button>
-                  <button
-                    onClick={() => {
-                      setLoginError('');
-                      setLoginView('signup');
-                      setShowLogoutMessage(false);
-                    }}
-                    className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
-                  >
-                    Create Account
-                  </button>
-                </div>
-
-                {/* Quick Demo Pre-fills */}
-                <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                  <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-500 mb-3">Quick Login Selector</p>
-                  <select
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) return;
-                      const [emailVal, pwdVal] = val.split('|');
-                      setEmail(emailVal);
-                      setPassword(pwdVal);
-                      setShowLogoutMessage(false);
-                    }}
-                    value={email ? `${email}|${password}` : ''}
-                    className="w-full bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-350 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
-                  >
-                    <option value="">-- Choose a Seeded Account --</option>
-                    <optgroup label="System Administrator">
-                      <option value="admin@college.edu|Admin123!">Admin Portal (admin@college.edu)</option>
-                    </optgroup>
-                    <optgroup label="Faculty Teachers (Staff)">
-                      <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
-                      <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
-                      <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
-                      <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
-                      <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
-                    </optgroup>
-                    <optgroup label="Enrolled Students (Class/Section-wise)">
-                      <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
-                      <option value="student.mcab@college.edu|Student123!">MCA Section B (student.mcab@)</option>
-                      <option value="student.mcac@college.edu|Student123!">MCA Section C (student.mcac@)</option>
-                      <option value="student.mcad@college.edu|Student123!">MCA Section D (student.mcad@)</option>
-                      <option value="student.mcae@college.edu|Student123!">MCA Section E (student.mcae@)</option>
-                      <option value="student.mcagenaia@college.edu|Student123!">MCA (Gen AI) Section A (student.mcagenaia@)</option>
-                      <option value="student.mcagenaib@college.edu|Student123!">MCA (Gen AI) Section B (student.mcagenaib@)</option>
-                      <option value="student.mcagenaic@college.edu|Student123!">MCA (Gen AI) Section C (student.mcagenaic@)</option>
-                      <option value="student.msca@college.edu|Student123!">M.Sc. Section A (student.msca@)</option>
-                      <option value="student.mscb@college.edu|Student123!">M.Sc. Section B (student.mscb@)</option>
-                      <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
-                      <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
-                      <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
-                      <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
-                      <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
-                      <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
-                    </optgroup>
-                  </select>
-                </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ) : loginView === 'forgot' ? (
-              <motion.div
-                key="forgot-view"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25 }}
-                className="flex flex-col items-center text-center py-4"
-              >
-                {/* SRM University Logo */}
-                <img
-                  src="/srm_logo.png"
-                  alt="SRM Logo"
-                  className="h-12 object-contain mb-6 filter dark:brightness-110"
-                />
-                <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                  <ShieldCheck className="w-8 h-8 text-brand-500 dark:text-brand-400" />
-                </div>
-                <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                  Contact Admin
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                  Please contact the System Administrator to reset your password.
-                </p>
-                <button
-                  onClick={() => setLoginView('login')}
-                  className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
-                >
-                  Back to Sign In
-                </button>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="signup-view"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.25 }}
-                className="flex flex-col items-center text-center py-4"
-              >
-                {/* SRM University Logo */}
-                <img
-                  src="/srm_logo.png"
-                  alt="SRM Logo"
-                  className="h-12 object-contain mb-6 filter dark:brightness-110"
-                />
-                <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                  <Sparkles className="w-8 h-8 text-brand-500 dark:text-brand-400" />
-                </div>
-                <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                  Account Registration
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                  Please contact the System Administrator to create a new portal account.
-                </p>
-                <button
-                  onClick={() => setLoginView('login')}
-                  className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
-                >
-                  Back to Sign In
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                      Back to Sign In
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
