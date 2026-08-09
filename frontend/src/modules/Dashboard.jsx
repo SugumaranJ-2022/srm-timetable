@@ -7,7 +7,7 @@ import {
   MapPin,
   Clock,
   TrendingUp,
-  Sparkles,
+  LayoutDashboard,
   Monitor,
   CheckCircle,
   HelpCircle,
@@ -197,7 +197,7 @@ const Dashboard = ({ setActiveTab }) => {
         <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-white/70 animate-spin-slow" />
+              <LayoutDashboard className="w-4 h-4 text-white/70" />
               <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Dashboard Overview</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
@@ -361,7 +361,7 @@ const Dashboard = ({ setActiveTab }) => {
           <div className="lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-brand-500/20 shadow-glass">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl" />
             <div className="flex items-center gap-3 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-widest">
-              <Sparkles className="w-4 h-4 animate-spin-slow" />
+              <Clock className="w-4 h-4" />
               {activeSession?.status === 'ACTIVE_CLASS' ? 'ACTIVE CLASS SESSION' : 'CLASS SESSION STATUS'}
             </div>
             {activeSession?.status === 'ACTIVE_CLASS' ? (

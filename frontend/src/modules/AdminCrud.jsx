@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { adminApi } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import { 
-  Plus, Upload, ShieldAlert, Sparkles, GraduationCap, Home, BookOpen, Layers, 
+  Plus, Upload, ShieldAlert, CheckCircle, GraduationCap, Home, BookOpen, Layers, 
   FileSpreadsheet, Download, Info, Database, ChevronDown, ChevronUp, Users, AlertTriangle
 } from 'lucide-react';
 
@@ -329,7 +329,7 @@ const AdminCrud = () => {
       )}
       {success && (
         <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-500/30 flex items-center gap-3 text-green-700 dark:text-green-400 text-sm">
-          <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
+          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 shrink-0" />
           <span>{success}</span>
         </div>
       )}

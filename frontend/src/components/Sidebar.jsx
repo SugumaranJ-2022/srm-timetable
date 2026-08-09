@@ -7,7 +7,6 @@ import {
   Users,
   FileText,
   LogOut,
-  Sparkles,
   Sun,
   Moon,
   X,

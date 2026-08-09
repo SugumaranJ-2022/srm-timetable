@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { adminApi, timetableApi } from '../services/api';
 import TimetableGrid from '../components/TimetableGrid';
 import { 
-  Sparkles, 
+  Zap,
+  Activity,
   Save, 
   HelpCircle, 
   AlertTriangle, 
@@ -297,7 +298,7 @@ const TimetableEditor = () => {
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md"
           >
-            <Sparkles className="w-4.5 h-4.5 animate-pulse" />
+            <Zap className="w-4.5 h-4.5 animate-pulse" />
             Auto-Solve Grid
           </button>
         </div>
@@ -328,7 +329,7 @@ const TimetableEditor = () => {
       {generationMetrics && (
         <div className="glass-panel p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 animate-fade-in">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
-            <Sparkles className="w-4.5 h-4.5 text-brand-500 dark:text-brand-400" />
+            <Activity className="w-4.5 h-4.5 text-brand-500 dark:text-brand-400" />
             Solver Compliance Metrics
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">

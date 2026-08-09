@@ -11,7 +11,6 @@ import TimetableGrid from './components/TimetableGrid';
 import { timetableApi } from './services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles,
   Mail,
   Lock,
   ArrowRight,
@@ -603,7 +602,7 @@ const AppContent = () => {
                       className="h-12 object-contain mb-6 filter dark:brightness-110"
                     />
                     <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                      <Sparkles className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                      <GraduationCap className="w-8 h-8 text-brand-500 dark:text-brand-400" />
                     </div>
                     <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
                       Account Registration
@@ -745,7 +744,7 @@ const AppContent = () => {
           ) : (
             <div className="flex flex-col items-center">
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center mb-4 border border-emerald-500/30">
-                <Sparkles className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
+                <GraduationCap className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
               </div>
               <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide mb-3">
                 Welcome to the Class and Section Portal
@@ -783,7 +782,7 @@ const AppContent = () => {
 
           <div className="flex items-center gap-2">
             <div className="bg-brand-500/20 p-1.5 rounded-lg border border-brand-500/30">
-              <Sparkles className="w-4 h-4 text-brand-400" />
+              <GraduationCap className="w-4 h-4 text-brand-400" />
             </div>
             <div>
               <h1 className="font-bold text-xs leading-none text-slate-900 dark:text-white">Smart Timetable</h1>
