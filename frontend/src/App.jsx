@@ -214,34 +214,34 @@ const AppContent = () => {
         {/* SRM Header/Navbar */}
         <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col">
           {/* Row 1: Utility Links */}
-          <div className="w-full bg-slate-950/45 border-b border-white/5 py-2 px-6 sm:px-12 flex justify-end gap-5 text-[11px] font-bold text-slate-300 select-none">
-            <span className="hover:text-white transition-colors cursor-pointer">Library</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Career Centre</span>
-            <span className="hover:text-white transition-colors cursor-pointer">News</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Events</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Blog</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Careers</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Contact us</span>
+          <div className="w-full bg-slate-950/75 backdrop-blur-sm border-b border-white/10 py-2.5 px-6 sm:px-12 flex justify-end gap-5 text-[11.5px] font-black text-white select-none tracking-wider">
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Library</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Career Centre</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">News</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Events</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Blog</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Careers</span>
+            <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Contact us</span>
           </div>
 
           {/* Row 2: Main Menu */}
-          <div className="w-full bg-slate-950/20 py-4 px-6 sm:px-12 flex items-center justify-between border-b border-white/10">
+          <div className="w-full bg-slate-900/85 backdrop-blur-md py-4 px-6 sm:px-12 flex items-center justify-between border-b border-white/15 shadow-xl">
             {/* Left: Logo & SRM Branding */}
-            <div className="flex items-center gap-3">
-              <img src="/srm_logo.png" alt="SRM Logo" className="h-12 object-contain filter brightness-0 invert" />
+            <div className="flex items-center gap-3.5">
+              <img src="/srm_logo.png" alt="SRM Logo" className="h-12 w-12 object-contain rounded-full bg-white p-0.5 shadow-md transition-transform duration-300 hover:scale-105" />
               <div className="hidden md:flex flex-col text-white">
-                <span className="text-sm font-black tracking-wider leading-none uppercase">SRM</span>
-                <span className="text-[9px] font-bold tracking-widest text-slate-350 uppercase mt-0.5">Institute of Science & Technology</span>
+                <span className="text-sm font-black tracking-wider leading-none uppercase text-white drop-shadow-md">SRM</span>
+                <span className="text-[9px] font-black tracking-widest text-slate-100 uppercase mt-0.5 drop-shadow-sm">Institute of Science & Technology</span>
               </div>
             </div>
 
             {/* Center: Navigation Menu Links */}
-            <div className="hidden lg:flex items-center gap-7 text-xs font-black tracking-widest text-white/95 uppercase">
-              <span className="hover:text-brand-400 transition-colors cursor-pointer">Academics</span>
-              <span className="hover:text-brand-400 transition-colors cursor-pointer">Research</span>
-              <span className="hover:text-brand-400 transition-colors cursor-pointer">Campus Life</span>
-              <span className="hover:text-brand-400 transition-colors cursor-pointer">International</span>
-              <span className="hover:text-brand-400 transition-colors cursor-pointer">About</span>
+            <div className="hidden lg:flex items-center gap-8 text-xs font-black tracking-widest text-white uppercase">
+              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Academics</span>
+              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Research</span>
+              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Campus Life</span>
+              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">International</span>
+              <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">About</span>
             </div>
 
             {/* Right: Theme Toggle & Sign In Action */}
@@ -252,9 +252,9 @@ const AppContent = () => {
                   e.stopPropagation();
                   toggleTheme();
                 }}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/10 transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
               >
-                {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-400" />}
+                {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
               </button>
 
               {/* Sign In to Timetable Button */}
@@ -263,7 +263,7 @@ const AppContent = () => {
                   e.stopPropagation();
                   setIsExpanded(true);
                 }}
-                className="py-2.5 px-5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-brand-500/20 hover:shadow-brand-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white font-black text-xs tracking-wider uppercase shadow-xl shadow-brand-500/35 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5 cursor-pointer"
               >
                 <GraduationCap className="w-3.5 h-3.5" />
                 <span>Sign In to Timetable</span>
