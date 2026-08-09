@@ -94,6 +94,7 @@ const AppContent = () => {
   const [loginError, setLoginError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   React.useEffect(() => {
     if (videoRef.current) {
@@ -194,7 +195,10 @@ const AppContent = () => {
           loop
           muted
           playsInline
-          onClick={() => setIsExpanded(false)}
+          onClick={() => {
+            setIsExpanded(false);
+            setMobileMenuOpen(false);
+          }}
           className="absolute inset-0 w-full h-full object-cover z-0 cursor-pointer"
           style={{
             transform: 'scale(1.15) translate(3%, 0%)',
@@ -207,14 +211,17 @@ const AppContent = () => {
 
         {/* Dynamic Light/Dark Overlay Mask */}
         <div 
-          onClick={() => setIsExpanded(false)}
+          onClick={() => {
+            setIsExpanded(false);
+            setMobileMenuOpen(false);
+          }}
           className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/55 transition-colors duration-300 z-10 cursor-pointer"
         ></div>
 
         {/* SRM Header/Navbar */}
         <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col">
-          {/* Row 1: Utility Links */}
-          <div className="w-full bg-slate-950/75 backdrop-blur-sm border-b border-white/10 py-2.5 px-6 sm:px-12 flex justify-end gap-5 text-[11.5px] font-black text-white select-none tracking-wider">
+          {/* Row 1: Utility Links (hidden on mobile, flex on desktop) */}
+          <div className="w-full bg-slate-950/75 backdrop-blur-sm border-b border-white/10 py-2.5 px-6 sm:px-12 hidden md:flex justify-end gap-5 text-[11.5px] font-black text-white select-none tracking-wider">
             <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Library</span>
             <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">Career Centre</span>
             <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md">News</span>
@@ -235,7 +242,7 @@ const AppContent = () => {
               </div>
             </div>
 
-            {/* Center: Navigation Menu Links */}
+            {/* Center: Navigation Menu Links (hidden on mobile/tablet) */}
             <div className="hidden lg:flex items-center gap-8 text-xs font-black tracking-widest text-white uppercase">
               <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Academics</span>
               <span className="hover:text-brand-300 transition-colors cursor-pointer drop-shadow-md hover:scale-105 transform duration-200">Research</span>
@@ -245,31 +252,106 @@ const AppContent = () => {
             </div>
 
             {/* Right: Theme Toggle & Sign In Action */}
-            <div className="flex items-center gap-4">
-              {/* Light/Dark Toggle */}
+            <div className="flex items-center gap-3.5">
+              {/* Light/Dark Toggle (Desktop only) */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleTheme();
                 }}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
+                className="hidden lg:flex p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
               >
                 {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
               </button>
 
-              {/* Sign In to Timetable Button */}
+              {/* Sign In to Timetable Button (Desktop & Tablet) */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  setMobileMenuOpen(false);
                   setIsExpanded(true);
                 }}
-                className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white font-black text-xs tracking-wider uppercase shadow-xl shadow-brand-500/35 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5 cursor-pointer"
+                className="hidden sm:flex py-2.5 px-5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-white font-black text-xs tracking-wider uppercase shadow-xl shadow-brand-500/35 hover:shadow-brand-500/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0 items-center gap-1.5 cursor-pointer"
               >
                 <GraduationCap className="w-3.5 h-3.5" />
                 <span>Sign In to Timetable</span>
               </button>
+
+              {/* Mobile Menu Toggle (Visible below lg) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMobileMenuOpen(!mobileMenuOpen);
+                }}
+                className="lg:hidden p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
+              >
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Menu Panel (Slides down below lg) */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden lg:hidden"
+              >
+                {/* Main Links */}
+                <div className="flex flex-col gap-4 border-b border-white/10 pb-5">
+                  <p className="text-[9px] uppercase font-extrabold tracking-widest text-slate-400">Main Menu</p>
+                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Academics</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Research</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">Campus Life</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">International</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="text-sm font-black tracking-widest hover:text-brand-300 transition-colors cursor-pointer uppercase">About</span>
+                </div>
+
+                {/* Utility Links */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2.5 border-b border-white/10 pb-5 text-xs font-bold text-slate-300">
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Library</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Career Centre</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">News</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Events</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Blog</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Careers</span>
+                  <span onClick={() => setMobileMenuOpen(false)} className="hover:text-white transition-colors cursor-pointer">Contact us</span>
+                </div>
+
+                {/* Theme & Actions */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-black uppercase text-slate-350">App Theme</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTheme();
+                      }}
+                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
+                      <span className="text-[10px] font-black uppercase">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMobileMenuOpen(false);
+                      setIsExpanded(true);
+                    }}
+                    className="py-2 px-4 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-extrabold text-xs tracking-wider uppercase shadow-lg shadow-brand-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
 
         {/* Expanded Login Card (Centers on Page) */}
