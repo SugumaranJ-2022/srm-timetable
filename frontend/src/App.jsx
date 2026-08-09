@@ -185,7 +185,7 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className="min-h-screen relative flex justify-center items-center pt-32 pb-8 p-4 transition-colors duration-300 overflow-hidden select-none">
+      <div className="min-h-screen relative flex justify-center items-center pt-32 pb-8 p-4 transition-colors duration-300 overflow-hidden">
 
         {/* Video Background */}
         <video
@@ -280,7 +280,7 @@ const AppContent = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="w-full max-w-md bg-white/90 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800/80 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/10 relative z-25 overflow-hidden animate-fade-in"
+              className="w-full max-w-md bg-white/95 dark:bg-[#0f172a]/95 border border-slate-250 dark:border-slate-800 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/10 relative z-50 overflow-hidden animate-fade-in"
             >
               {/* Close Button */}
               <button
@@ -310,7 +310,7 @@ const AppContent = () => {
                       <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
                         Sign In to Timetable
                       </h1>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-center">Enter your credential details to proceed</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 text-center">Enter your credential details to proceed</p>
                     </div>
 
                     {/* Form */}
@@ -348,7 +348,7 @@ const AppContent = () => {
                         {/* Username Input Container */}
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Mail className="w-4 h-4 text-slate-400 dark:text-slate-550" />
+                            <Mail className="w-4 h-4 text-slate-400 dark:text-slate-300" />
                           </span>
                           <input
                             type="email"
@@ -359,14 +359,14 @@ const AppContent = () => {
                               setEmail(e.target.value);
                               setShowLogoutMessage(false);
                             }}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
                           />
                         </div>
 
                         {/* Password Input Container */}
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Lock className="w-4 h-4 text-slate-400 dark:text-slate-550" />
+                            <Lock className="w-4 h-4 text-slate-400 dark:text-slate-300" />
                           </span>
                           <input
                             type={showPassword ? 'text' : 'password'}
@@ -377,12 +377,12 @@ const AppContent = () => {
                               setPassword(e.target.value);
                               setShowLogoutMessage(false);
                             }}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950/40 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-600 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-slate-650 dark:hover:text-slate-350 cursor-pointer"
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-300 hover:text-slate-650 dark:hover:text-white cursor-pointer"
                           >
                             {showPassword ? (
                               <EyeOff className="w-4 h-4" />
@@ -404,14 +404,14 @@ const AppContent = () => {
                     </form>
 
                     {/* Forget Password & Signup Links */}
-                    <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
+                    <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-200 select-none">
                       <button
                         onClick={() => {
                           setLoginError('');
                           setLoginView('forgot');
                           setShowLogoutMessage(false);
                         }}
-                        className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                        className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
                       >
                         Forget Password?
                       </button>
@@ -421,7 +421,7 @@ const AppContent = () => {
                           setLoginView('signup');
                           setShowLogoutMessage(false);
                         }}
-                        className="hover:underline hover:text-brand-500 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                        className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
                       >
                         Create Account
                       </button>
@@ -429,7 +429,7 @@ const AppContent = () => {
 
                     {/* Quick Demo Pre-fills */}
                     <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                      <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-500 mb-3">Quick Login Selector</p>
+                      <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-350 mb-3">Quick Login Selector</p>
                       <select
                         onChange={(e) => {
                           const val = e.target.value;
@@ -440,7 +440,7 @@ const AppContent = () => {
                           setShowLogoutMessage(false);
                         }}
                         value={email ? `${email}|${password}` : ''}
-                        className="w-full bg-slate-50 dark:bg-slate-950/40 text-slate-700 dark:text-slate-350 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
+                        className="w-full bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-100 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
                       >
                         <option value="">-- Choose a Seeded Account --</option>
                         <optgroup label="System Administrator">
