@@ -7,7 +7,7 @@ const ThemeContext = createContext({
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
+    const saved = localStorage.getItem('theme_v2');
     if (saved) return saved;
     // Default to light mode (white mode)
     return 'light';
@@ -22,7 +22,7 @@ export const ThemeProvider = ({ children }) => {
       root.classList.remove('dark');
       root.style.colorScheme = 'light';
     }
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('theme_v2', theme);
   }, [theme]);
 
   const toggleTheme = () => {
