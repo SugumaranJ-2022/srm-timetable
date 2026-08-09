@@ -112,6 +112,16 @@ const adminTimetables = [
   { name: "Admin Portal", email: "admin@college.edu", password: "Admin123!" }
 ];
 
+const generateCaptcha = () => {
+  const n1 = Math.floor(Math.random() * 10);
+  const n2 = Math.floor(Math.random() * 10);
+  const n3 = Math.floor(Math.random() * 10);
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const c4 = letters[Math.floor(Math.random() * letters.length)];
+  const n5 = Math.floor(Math.random() * 10);
+  return `${n1}${n2}${n3}${c4}${n5}`;
+};
+
 const AppContent = () => {
   const { user, role, profile, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -157,6 +167,16 @@ const AppContent = () => {
   const [activeDropdown, setActiveDropdownState] = useState(null); // 'class' | 'staff' | 'admin' | null
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [captchaVal, setCaptchaVal] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+
+  React.useEffect(() => {
+    setCaptchaVal(generateCaptcha());
+    const interval = setInterval(() => {
+      setCaptchaVal(generateCaptcha());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleDropdownToggle = (type) => {
     setActiveDropdownState(activeDropdown === type ? null : type);
@@ -241,11 +261,26 @@ const AppContent = () => {
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
+
+    // Captcha validation for Admin
+    if (email.trim().toLowerCase() === 'admin@college.edu') {
+      if (captchaInput !== captchaVal) {
+        setLoginError('Invalid Captcha code. Please try again.');
+        setCaptchaVal(generateCaptcha());
+        setCaptchaInput('');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await login(email, password);
     } catch (err) {
       setLoginError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
+      if (email.trim().toLowerCase() === 'admin@college.edu') {
+        setCaptchaVal(generateCaptcha());
+        setCaptchaInput('');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -739,6 +774,42 @@ const AppContent = () => {
                             )}
                           </button>
                         </div>
+
+                        {/* Captcha Input Container (Conditional for Admin) */}
+                        {email.trim().toLowerCase() === 'admin@college.edu' && (
+                          <div className="space-y-2 animate-fade-in pt-1">
+                            <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-350 tracking-wider">Security Verification</label>
+                            <div className="flex gap-3">
+                              {/* Captcha Value Display Card */}
+                              <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-950/80 dark:to-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex items-center justify-center font-mono text-lg font-black tracking-widest text-brand-600 dark:text-brand-400 select-none shadow-sm relative overflow-hidden h-[46px]">
+                                <span className="relative z-10 filter drop-shadow-md select-none">{captchaVal}</span>
+                                <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:16px_16px] opacity-15" />
+                                <div className="absolute w-full h-[1px] bg-red-500/20 top-1/2 left-0 transform -translate-y-1/2 rotate-6 scale-110" />
+                                <div className="absolute w-full h-[1px] bg-blue-500/20 top-1/2 left-0 transform -translate-y-1/2 -rotate-3 scale-110" />
+                              </div>
+                              {/* Captcha Text Input */}
+                              <input
+                                type="text"
+                                required
+                                maxLength={5}
+                                placeholder="Enter Captcha"
+                                value={captchaInput}
+                                onChange={(e) => setCaptchaInput(e.target.value)}
+                                className="w-[160px] bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold tracking-widest text-center shadow-sm"
+                              />
+                            </div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-between px-1">
+                              <span>Updates automatically in 30s</span>
+                              <button
+                                type="button"
+                                onClick={() => setCaptchaVal(generateCaptcha())}
+                                className="text-brand-500 dark:text-brand-400 hover:underline font-bold"
+                              >
+                                Refresh Code
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Login Submit Button */}
