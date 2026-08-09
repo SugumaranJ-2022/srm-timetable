@@ -169,12 +169,20 @@ const AppContent = () => {
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [captchaVal, setCaptchaVal] = useState('');
   const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaTimer, setCaptchaTimer] = useState(30);
 
   React.useEffect(() => {
     setCaptchaVal(generateCaptcha());
+    setCaptchaTimer(30);
     const interval = setInterval(() => {
-      setCaptchaVal(generateCaptcha());
-    }, 30000);
+      setCaptchaTimer((prev) => {
+        if (prev <= 1) {
+          setCaptchaVal(generateCaptcha());
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -277,6 +285,7 @@ const AppContent = () => {
       if (captchaInput !== captchaVal) {
         setLoginError('Invalid Captcha code. Please try again.');
         setCaptchaVal(generateCaptcha());
+        setCaptchaTimer(30);
         setCaptchaInput('');
         return;
       }
@@ -289,6 +298,7 @@ const AppContent = () => {
       setLoginError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
       if (email.trim().toLowerCase() === 'admin@college.edu') {
         setCaptchaVal(generateCaptcha());
+        setCaptchaTimer(30);
         setCaptchaInput('');
       }
     } finally {
@@ -830,10 +840,13 @@ const AppContent = () => {
                               />
                             </div>
                             <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-between px-1">
-                              <span>Updates automatically in 30s</span>
+                              <span>Updates automatically in {captchaTimer}s</span>
                               <button
                                 type="button"
-                                onClick={() => setCaptchaVal(generateCaptcha())}
+                                onClick={() => {
+                                  setCaptchaVal(generateCaptcha());
+                                  setCaptchaTimer(30);
+                                }}
                                 className="text-brand-500 dark:text-brand-400 hover:underline font-bold"
                               >
                                 Refresh Code
