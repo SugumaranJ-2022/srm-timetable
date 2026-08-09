@@ -178,6 +178,16 @@ const AppContent = () => {
     return () => clearInterval(interval);
   }, []);
 
+  React.useEffect(() => {
+    const handleOutsideClick = (e) => {
+      setActiveDropdownState(null);
+    };
+    window.addEventListener('click', handleOutsideClick);
+    return () => {
+      window.removeEventListener('click', handleOutsideClick);
+    };
+  }, []);
+
   const handleDropdownToggle = (type) => {
     setActiveDropdownState(activeDropdown === type ? null : type);
     setClassSearchQuery('');
@@ -352,7 +362,10 @@ const AppContent = () => {
               {/* Class Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownToggle('class')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDropdownToggle('class');
+                  }}
                   onMouseEnter={() => handleDropdownToggle('class')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
@@ -362,7 +375,7 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'class' && (
                   <div
-                    onMouseLeave={() => handleDropdownToggle(null)}
+                    onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2.5 z-50 animate-fade-in"
                   >
                     <div className="px-1" onClick={(e) => e.stopPropagation()}>
@@ -395,7 +408,10 @@ const AppContent = () => {
               {/* Staff Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownToggle('staff')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDropdownToggle('staff');
+                  }}
                   onMouseEnter={() => handleDropdownToggle('staff')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
@@ -405,7 +421,7 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'staff' && (
                   <div
-                    onMouseLeave={() => handleDropdownToggle(null)}
+                    onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 flex flex-col gap-2.5 z-50 animate-fade-in"
                   >
                     <div className="px-1" onClick={(e) => e.stopPropagation()}>
@@ -438,7 +454,10 @@ const AppContent = () => {
               {/* Admin Timetable Dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => handleDropdownToggle('admin')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDropdownToggle('admin');
+                  }}
                   onMouseEnter={() => handleDropdownToggle('admin')}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors duration-200 cursor-pointer"
                 >
@@ -448,7 +467,7 @@ const AppContent = () => {
                 </button>
                 {activeDropdown === 'admin' && (
                   <div
-                    onMouseLeave={() => handleDropdownToggle(null)}
+                    onClick={(e) => e.stopPropagation()}
                     className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-2.5 z-50 animate-fade-in"
                   >
                     {adminTimetables.map((item, idx) => (
@@ -507,7 +526,10 @@ const AppContent = () => {
                   {/* Class Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => handleDropdownToggle('class')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle('class');
+                      }}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -519,6 +541,7 @@ const AppContent = () => {
                     <AnimatePresence>
                       {activeDropdown === 'class' && (
                         <motion.div
+                          onClick={(e) => e.stopPropagation()}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
@@ -555,7 +578,10 @@ const AppContent = () => {
                   {/* Staff Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => handleDropdownToggle('staff')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle('staff');
+                      }}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -567,6 +593,7 @@ const AppContent = () => {
                     <AnimatePresence>
                       {activeDropdown === 'staff' && (
                         <motion.div
+                          onClick={(e) => e.stopPropagation()}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
@@ -603,7 +630,10 @@ const AppContent = () => {
                   {/* Admin Timetable Group */}
                   <div className="flex flex-col">
                     <button
-                      onClick={() => handleDropdownToggle('admin')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle('admin');
+                      }}
                       className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
                       <span className="flex items-center gap-2">
@@ -615,6 +645,7 @@ const AppContent = () => {
                     <AnimatePresence>
                       {activeDropdown === 'admin' && (
                         <motion.div
+                          onClick={(e) => e.stopPropagation()}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
