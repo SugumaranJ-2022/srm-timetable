@@ -197,7 +197,7 @@ const AppContent = () => {
           onClick={() => setIsExpanded(false)}
           className="absolute inset-0 w-full h-full object-cover z-0 cursor-pointer"
           style={{
-            transform: 'scale(1.25) translate(4%, 5%)',
+            transform: 'scale(1.15) translate(3%, 0%)',
             transformOrigin: 'center center'
           }}
         >
@@ -608,7 +608,7 @@ const AppContent = () => {
           playsInline
           className="absolute inset-0 w-full h-full object-cover z-0"
           style={{
-            transform: 'scale(1.25) translate(4%, 5%)',
+            transform: 'scale(1.15) translate(3%, 0%)',
             transformOrigin: 'center center'
           }}
         >
