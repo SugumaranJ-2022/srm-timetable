@@ -704,9 +704,6 @@ const AppContent = () => {
                         className="w-full bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-100 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
                       >
                         <option value="">-- Choose a Seeded Account --</option>
-                        <optgroup label="System Administrator">
-                          <option value="admin@college.edu|Admin123!">Admin Portal (admin@college.edu)</option>
-                        </optgroup>
                         <optgroup label="Faculty Teachers (Staff)">
                           <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
                           <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
