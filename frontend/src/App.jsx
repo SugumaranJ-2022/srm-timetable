@@ -324,7 +324,7 @@ const AppContent = () => {
     return (
       <div className="min-h-screen relative flex transition-colors duration-300 overflow-hidden bg-slate-50 dark:bg-[#070b13] w-full">
         {/* Left Side: Professional Sidebar (Desktop only) */}
-        <aside className="hidden lg:flex flex-col w-80 bg-slate-900/90 backdrop-blur-2xl border-r border-white/10 text-white p-6 z-30 select-none justify-between h-screen overflow-y-auto flex-shrink-0">
+        <aside className="hidden md:flex flex-col w-80 bg-slate-900/90 backdrop-blur-2xl border-r border-white/10 text-white p-6 z-30 select-none justify-between h-screen overflow-y-auto flex-shrink-0">
           {/* Top Section: Logo & Branding */}
           <div className="space-y-8">
             <div className="flex items-center gap-3">
@@ -494,8 +494,8 @@ const AppContent = () => {
             className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/55 transition-colors duration-300 z-10 cursor-pointer"
           ></div>
 
-          {/* Mobile Top Navbar (Visible below lg only) */}
-          <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col lg:hidden">
+          {/* Mobile Top Navbar (Visible below md only) */}
+          <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col md:hidden">
             {/* Mobile Header Row */}
             <div className="w-full bg-slate-900/85 backdrop-blur-md py-4 px-6 flex items-center justify-between border-b border-white/15 shadow-xl">
               <div className="flex items-center gap-3">
@@ -526,7 +526,7 @@ const AppContent = () => {
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden lg:hidden"
+                  className="w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden md:hidden"
                 >
                   {/* Mobile Timetable Selectors (Accordion style) */}
                   <div className="flex flex-col gap-4 border-b border-white/10 pb-5">
