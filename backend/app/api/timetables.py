@@ -454,8 +454,11 @@ async def wipe_timetables(
     current_user = Depends(get_current_admin)
 ):
     from sqlalchemy import text
-    # Disable foreign keys for SQLite bulk clear
-    await db.execute(text("PRAGMA foreign_keys = OFF"))
+    from backend.app.core.config import settings
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = OFF"))
     
     tables_to_clear = [
         "substitutions",
@@ -473,13 +476,16 @@ async def wipe_timetables(
         "departments"
     ]
     for table in tables_to_clear:
-        await db.execute(text(f"DELETE FROM {table}"))
+        if is_sqlite:
+            await db.execute(text(f"DELETE FROM {table}"))
+        else:
+            await db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
         
     # Delete non-admin users
     await db.execute(text("DELETE FROM users WHERE role != 'Admin'"))
     
-    # Re-enable foreign keys
-    await db.execute(text("PRAGMA foreign_keys = ON"))
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = ON"))
     await db.commit()
     
     return {"message": "All timetables and master registry database records have been successfully wiped."}

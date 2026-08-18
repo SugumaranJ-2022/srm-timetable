@@ -413,8 +413,12 @@ async def import_master(
     df_students = read_sheet("Students")
     df_calendar = read_sheet("Academic Calendar")
 
-    # Disable foreign keys in SQLite for bulk reload safety
-    await db.execute(text("PRAGMA foreign_keys = OFF"))
+    # Detect database dialect for correct truncation strategy
+    from backend.app.core.config import settings
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = OFF"))
 
     # Truncate all tables
     tables_to_clear = [
@@ -433,7 +437,10 @@ async def import_master(
         "departments"
     ]
     for table in tables_to_clear:
-        await db.execute(text(f"DELETE FROM {table}"))
+        if is_sqlite:
+            await db.execute(text(f"DELETE FROM {table}"))
+        else:
+            await db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
     
     # Delete non-admin users
     await db.execute(text("DELETE FROM users WHERE role != 'Admin'"))
@@ -673,8 +680,9 @@ async def import_master(
             ))
     await db.flush()
 
-    # Re-enable foreign keys
-    await db.execute(text("PRAGMA foreign_keys = ON"))
+    # Re-enable foreign keys (SQLite only)
+    if is_sqlite:
+        await db.execute(text("PRAGMA foreign_keys = ON"))
     await db.commit()
 
     # Automatically generate timetable for unique semesters
