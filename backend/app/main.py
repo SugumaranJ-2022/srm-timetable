@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import traceback
 
 from backend.app.core.config import settings
 from backend.app.core.database import Base, engine
@@ -19,14 +21,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS setup
+# Allowed origins — production + local development
+ALLOWED_ORIGINS = [
+    "https://srm-ai-powered-timetable.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+]
+
+# CORS setup with explicit origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for dev simplicity
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global exception handler — ensures CORS headers are sent even on 500 errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    headers = {}
+    if origin in ALLOWED_ORIGINS:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+    
+    traceback.print_exc()  # Log the full traceback to Render logs
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers=headers
+    )
 
 # Include routers
 app.include_router(auth.router, prefix=settings.API_V1_STR)
@@ -54,3 +80,4 @@ async def debug_db(db: AsyncSession = Depends(get_db)):
         "users_count": len(users),
         "users_list": [u.email for u in users]
     }
+

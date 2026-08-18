@@ -455,40 +455,54 @@ async def wipe_timetables(
 ):
     from sqlalchemy import text
     from backend.app.core.config import settings
+    import traceback
     is_sqlite = settings.DATABASE_URL.startswith("sqlite")
 
-    if is_sqlite:
-        await db.execute(text("PRAGMA foreign_keys = OFF"))
-    
-    tables_to_clear = [
-        "substitutions",
-        "timetable_details",
-        "timetables",
-        "academic_calendar",
-        "section_subjects",
-        "staff_subject",
-        "students",
-        "staff",
-        "sections",
-        "classrooms",
-        "timeslots",
-        "subjects",
-        "departments"
-    ]
-    for table in tables_to_clear:
+    try:
         if is_sqlite:
-            await db.execute(text(f"DELETE FROM {table}"))
-        else:
-            await db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+            await db.execute(text("PRAGMA foreign_keys = OFF"))
         
-    # Delete non-admin users
-    await db.execute(text("DELETE FROM users WHERE role != 'Admin'"))
-    
-    if is_sqlite:
-        await db.execute(text("PRAGMA foreign_keys = ON"))
-    await db.commit()
-    
-    return {"message": "All timetables and master registry database records have been successfully wiped."}
+        tables_to_clear = [
+            "substitutions",
+            "timetable_details",
+            "timetables",
+            "academic_calendar",
+            "section_subjects",
+            "staff_subject",
+            "students",
+            "staff",
+            "sections",
+            "classrooms",
+            "timeslots",
+            "subjects",
+            "departments"
+        ]
+        for table in tables_to_clear:
+            try:
+                if is_sqlite:
+                    await db.execute(text(f"DELETE FROM {table}"))
+                else:
+                    await db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+            except Exception:
+                # Fallback: try DELETE if TRUNCATE fails
+                try:
+                    await db.execute(text(f"DELETE FROM {table}"))
+                except Exception:
+                    pass  # Table might not exist yet
+            
+        # Delete non-admin users
+        await db.execute(text("DELETE FROM users WHERE role != 'Admin'"))
+        
+        if is_sqlite:
+            await db.execute(text("PRAGMA foreign_keys = ON"))
+        await db.commit()
+        
+        return {"message": "All timetables and master registry database records have been successfully wiped."}
+    except Exception as e:
+        traceback.print_exc()
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Wipe failed: {str(e)}")
+
 
 
 @router.get("/analytics/staff-load")
