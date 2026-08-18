@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi, timetableApi } from '../services/api';
 import {
@@ -23,7 +23,9 @@ import {
   ChevronRight,
   BookMarked,
   Search,
-  X
+  X,
+  BarChart3,
+  ArrowRight
 } from 'lucide-react';
 
 // ================= Helpers =================
@@ -111,6 +113,11 @@ const Dashboard = ({ setActiveTab }) => {
   const [mySchedule, setMySchedule] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [now, setNow]           = useState(new Date());
+  const [substitutions, setSubstitutions] = useState([]);
+  const [mySection, setMySection] = useState(null);
+  const [isHoliday, setIsHoliday] = useState(false);
+  const [holidayTitle, setHolidayTitle] = useState('');
+  const [staffLoadData, setStaffLoadData] = useState([]);
 
   // Detailed lists for click-to-view feature
   const [staffList, setStaffList]           = useState([]);
@@ -125,36 +132,74 @@ const Dashboard = ({ setActiveTab }) => {
     return () => clearInterval(timer);
   }, []);
 
+  const fetchDashboardData = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
+    try {
+      const dateParam = new Date().toLocaleDateString('sv-SE');
+      const timeParam = new Date().toTimeString().split(' ')[0];
+
+      // Fetch live status to check for holidays
+      const liveStatus = await timetableApi.getLiveStatus(dateParam, timeParam);
+      setIsHoliday(liveStatus.is_holiday);
+      setHolidayTitle(liveStatus.holiday_title || '');
+
+      if (user.role === 'Admin') {
+        const [staff, students, rooms, subs, secs] = await Promise.all([
+          adminApi.getStaff(), adminApi.getStudents(), adminApi.getClassrooms(),
+          adminApi.getSubjects(), adminApi.getSections()
+        ]);
+        setStats({ staffCount: staff.length, studentCount: students.length, classroomCount: rooms.length, subjectCount: subs.length, sectionsCount: secs.length });
+        setStaffList(staff);
+        setStudentsList(students);
+        setClassroomsList(rooms);
+        setSubjectsList(subs);
+        setSections(secs);
+
+        // Fetch staff load analytics
+        try {
+          const loadData = await timetableApi.getStaffLoadAnalytics();
+          setStaffLoadData(loadData);
+        } catch (_e) { /* analytics non-critical */ }
+      } else if (user.role === 'Staff' && profile?.staff?.id) {
+        const [schedule, subs] = await Promise.all([
+          timetableApi.getStaffTimetable(profile.staff.id),
+          timetableApi.getSubstitutionsByDate(dateParam)
+        ]);
+        setMySchedule(schedule);
+        setSubstitutions(subs);
+      } else if (user.role === 'Student' && profile?.student?.section_id) {
+        const [tt, secs, subs] = await Promise.all([
+          timetableApi.getSectionTimetable(profile.student.section_id, dateParam),
+          adminApi.getSections(),
+          timetableApi.getSubstitutionsByDate(dateParam)
+        ]);
+        const currentSec = secs.find(s => s.id === profile.student.section_id);
+        setMySection(currentSec);
+        setSubstitutions(subs);
+
+        const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        setMySchedule(tt.details.map(d => ({
+          ...d,
+          day_of_week: DAYS[Math.floor((d.timeslot_id - 1) / 6)] || 'Monday',
+          period_number: ((d.timeslot_id - 1) % 6) + 1
+        })));
+      }
+    } catch (e) { console.error('Dashboard load error', e); }
+    finally {
+      if (showLoading) setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        if (user.role === 'Admin') {
-          const [staff, students, rooms, subs, secs] = await Promise.all([
-            adminApi.getStaff(), adminApi.getStudents(), adminApi.getClassrooms(),
-            adminApi.getSubjects(), adminApi.getSections()
-          ]);
-          setStats({ staffCount: staff.length, studentCount: students.length, classroomCount: rooms.length, subjectCount: subs.length, sectionsCount: secs.length });
-          setStaffList(staff);
-          setStudentsList(students);
-          setClassroomsList(rooms);
-          setSubjectsList(subs);
-          setSections(secs);
-        } else if (user.role === 'Staff' && profile?.staff?.id) {
-          setMySchedule(await timetableApi.getStaffTimetable(profile.staff.id));
-        } else if (user.role === 'Student' && profile?.student?.section_id) {
-          const tt = await timetableApi.getSectionTimetable(profile.student.section_id);
-          const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-          setMySchedule(tt.details.map(d => ({
-            ...d,
-            day_of_week: DAYS[Math.floor((d.timeslot_id - 1) / 6)] || 'Monday',
-            period_number: ((d.timeslot_id - 1) % 6) + 1
-          })));
-        }
-      } catch (e) { console.error('Dashboard load error', e); }
-      finally { setLoading(false); }
-    };
-    if (user) load();
+    if (user) {
+      fetchDashboardData(true);
+
+      const interval = setInterval(() => {
+        fetchDashboardData(false);
+      }, 10000);
+
+      return () => clearInterval(interval);
+    }
   }, [user, profile]);
 
   const getActiveSession = useCallback(() => {
@@ -177,6 +222,21 @@ const Dashboard = ({ setActiveTab }) => {
   const freeSlots = user?.role === 'Staff' ? getStaffFreeSlots(mySchedule) : [];
   const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
   const totalMins = now.getHours() * 60 + now.getMinutes();
+
+  // Feature 4: Next Up preview for Staff/Student
+  const nextSession = useMemo(() => {
+    if (!mySchedule.length || !activeSession) return null;
+    const DAYS = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+    const dayName = DAYS[now.getDay()];
+    const currentPeriod = activeSession?.period || 0;
+    // Find next teaching period (skip break at period 4)
+    const nextPeriods = [1, 2, 3, 5, 6].filter(p => p > currentPeriod);
+    for (const np of nextPeriods) {
+      const next = mySchedule.find(c => c.day_of_week === dayName && c.period_number === np);
+      if (next) return { ...next, period: np, time: PERIOD_RANGES[np]?.label };
+    }
+    return null;
+  }, [mySchedule, now, activeSession]);
 
   if (loading) return (
     <div className="flex justify-center items-center h-[50vh]">
@@ -211,11 +271,36 @@ const Dashboard = ({ setActiveTab }) => {
           </div>
           <div className="shrink-0 bg-white/15 backdrop-blur-sm border border-white/20 px-5 py-3 rounded-2xl flex flex-col items-end">
             <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{todayName}</span>
-            <span className="text-white font-black text-xl tabular-nums">{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
-            <span className="text-white/60 text-[10px] mt-0.5">{now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span className="text-white font-black text-xl tabular-nums">
+              {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            </span>
+            <span className="text-white/60 text-[10px] mt-0.5">
+              {now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Dynamic Substitution alerts for students/staff */}
+      {user.role === 'Student' && mySection && substitutions.filter(sub => sub.section_name === mySection.name).map(sub => (
+        <div key={sub.id} className="bg-amber-500/10 border border-amber-500/25 p-4 rounded-2xl text-amber-800 dark:text-amber-300 flex items-center gap-3 animate-fade-in">
+          <AlertTriangle className="w-5 h-5 shrink-0 animate-bounce" />
+          <div className="text-xs text-left">
+            <span className="font-extrabold uppercase bg-amber-500/20 px-2 py-0.5 rounded mr-2">Substitution Notice</span>
+            Today's Hour <span className="font-bold">{(sub.timeslot_id - 1) % 6 + 1}</span> class <span className="font-bold">[{sub.subject_name}]</span> will be handled by <span className="font-black">{sub.substitute_staff_name}</span> instead of <span className="font-semibold">{sub.original_staff_name}</span>.
+          </div>
+        </div>
+      ))}
+      
+      {user.role === 'Staff' && substitutions.filter(sub => sub.substitute_staff_id === profile?.staff?.id).map(sub => (
+        <div key={sub.id} className="bg-brand-500/10 border border-brand-550/20 p-4 rounded-2xl text-brand-800 dark:text-brand-300 flex items-center gap-3 animate-fade-in">
+          <Users className="w-5 h-5 shrink-0" />
+          <div className="text-xs text-left">
+            <span className="font-extrabold uppercase bg-brand-500/20 px-2 py-0.5 rounded mr-2">Absence Cover Alert</span>
+            You are scheduled to cover Hour <span className="font-bold">{(sub.timeslot_id - 1) % 6 + 1}</span> class <span className="font-bold">[{sub.subject_name}]</span> for Section <span className="font-extrabold">{sub.section_name}</span> in Room <span className="font-bold">{sub.room_number}</span> today.
+          </div>
+        </div>
+      ))}
 
       {user.role === 'Admin' ? (
         <>
@@ -297,6 +382,49 @@ const Dashboard = ({ setActiveTab }) => {
             </div>
           </div>
 
+          {/* ================= Faculty Load Distribution ================= */}
+          {staffLoadData.length > 0 && (
+            <div className="glass-card p-6 rounded-3xl">
+              <div className="flex items-center gap-2 mb-5">
+                <BarChart3 className="w-4 h-4 text-brand-500" />
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">Faculty Teaching Load</h3>
+                <span className="ml-auto text-[10px] text-slate-400">Weekly periods per faculty</span>
+              </div>
+              <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1">
+                {staffLoadData
+                  .sort((a, b) => b.total_periods - a.total_periods)
+                  .map(s => {
+                    const maxLoad = 25;
+                    const pct = Math.round((s.total_periods / maxLoad) * 100);
+                    const isOverloaded = s.total_periods >= 20;
+                    const isLight = s.total_periods <= 10;
+                    return (
+                      <div key={s.staff_id} className="group">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[180px]">{s.staff_name}</span>
+                          <div className="flex items-center gap-2">
+                            {isOverloaded && <span className="text-[8px] font-extrabold text-red-500 bg-red-500/10 px-1 py-0.5 rounded border border-red-500/20 uppercase">Heavy</span>}
+                            {isLight && <span className="text-[8px] font-extrabold text-blue-500 bg-blue-500/10 px-1 py-0.5 rounded border border-blue-500/20 uppercase">Light</span>}
+                            <span className="text-[10px] font-bold text-slate-500 tabular-nums">{s.total_periods} / {maxLoad}</span>
+                          </div>
+                        </div>
+                        <div className="h-2 bg-slate-200/50 dark:bg-slate-800/50 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              isOverloaded ? 'bg-gradient-to-r from-red-500 to-orange-500' :
+                              isLight ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
+                              'bg-gradient-to-r from-brand-500 to-indigo-500'
+                            }`}
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* ================= System Status + Quick Actions ================= */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* System Status */}
@@ -362,9 +490,19 @@ const Dashboard = ({ setActiveTab }) => {
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl" />
             <div className="flex items-center gap-3 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-widest">
               <Clock className="w-4 h-4" />
-              {activeSession?.status === 'ACTIVE_CLASS' ? 'ACTIVE CLASS SESSION' : 'CLASS SESSION STATUS'}
+              {isHoliday ? 'HOLIDAY STATUS' : (activeSession?.status === 'ACTIVE_CLASS' ? 'ACTIVE CLASS SESSION' : 'CLASS SESSION STATUS')}
             </div>
-            {activeSession?.status === 'ACTIVE_CLASS' ? (
+            {isHoliday ? (
+              <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                  🌴
+                </div>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Institutional Holiday</h4>
+                <p className="text-slate-500 dark:text-slate-450 text-sm">
+                  Today is a holiday: <span className="font-bold text-brand-500">{holidayTitle}</span>. Enjoy your day off!
+                </p>
+              </div>
+            ) : activeSession?.status === 'ACTIVE_CLASS' ? (
               <div className="mt-6 space-y-6">
                 <div>
                   <h3 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight">{activeSession.data.subject_name}</h3>
@@ -412,6 +550,28 @@ const Dashboard = ({ setActiveTab }) => {
           </div>
 
           <div className="glass-panel p-6 rounded-3xl space-y-6">
+            {/* Next Up Preview */}
+            {nextSession && !isHoliday && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                  <ArrowRight className="w-4 h-4 text-brand-500" />
+                  Next Up
+                </h4>
+                <div className="p-4 rounded-xl bg-gradient-to-br from-brand-500/5 to-indigo-500/5 border border-brand-500/15 space-y-2">
+                  <p className="text-xs font-black text-slate-800 dark:text-white">{nextSession.subject_name}</p>
+                  <div className="flex flex-wrap gap-x-3 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span>Hour {nextSession.period < 4 ? nextSession.period : nextSession.period - 1}</span>
+                    <span>•</span>
+                    <span>{nextSession.time}</span>
+                    <span>•</span>
+                    <span>{nextSession.room_number || 'Online'}</span>
+                  </div>
+                  {nextSession.staff_name && (
+                    <p className="text-[10px] text-slate-450 dark:text-slate-500">Instructor: <span className="font-bold text-slate-700 dark:text-slate-300">{nextSession.staff_name}</span></p>
+                  )}
+                </div>
+              </div>
+            )}
             {user.role === 'Staff' && (
               <div className="space-y-3">
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide">Free Periods Summary</h4>

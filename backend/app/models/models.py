@@ -185,3 +185,32 @@ class TimetableDetail(Base):
     subject = relationship("Subject", back_populates="timetable_details")
     staff = relationship("Staff", back_populates="timetable_details")
     classroom = relationship("Classroom", back_populates="timetable_details")
+
+
+class AcademicCalendarEvent(Base):
+    __tablename__ = "academic_calendar"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    date = Column(String(50), nullable=False)
+    title = Column(String(250), nullable=False)
+    type = Column(String(50), nullable=False)  # holiday, exam, event, announcement
+    description = Column(String(1000), nullable=True)
+
+
+class Substitution(Base):
+    __tablename__ = "substitutions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    date = Column(String(50), nullable=False)  # YYYY-MM-DD
+    timeslot_id = Column(Integer, ForeignKey("timeslots.id", ondelete="CASCADE"), nullable=False)
+    original_staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    substitute_staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    timetable_detail_id = Column(Integer, ForeignKey("timetable_details.id", ondelete="CASCADE"), nullable=False)
+
+    # Relationships
+    timeslot = relationship("TimeSlot")
+    original_staff = relationship("Staff", foreign_keys=[original_staff_id])
+    substitute_staff = relationship("Staff", foreign_keys=[substitute_staff_id])
+    timetable_detail = relationship("TimetableDetail")
+
+

@@ -8,6 +8,8 @@ import AdminCrud from './modules/AdminCrud';
 import Reports from './modules/Reports';
 import AcademicCalendar from './modules/AcademicCalendar';
 import TimetableGrid from './components/TimetableGrid';
+import LiveTracker from './modules/LiveTracker';
+import SubstitutionManager from './modules/SubstitutionManager';
 import { timetableApi } from './services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -26,7 +28,8 @@ import {
   ChevronDown,
   Calendar,
   Users,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from 'lucide-react';
 
 const bicycleVariants = {
@@ -125,8 +128,6 @@ const generateCaptcha = () => {
 const AppContent = () => {
   const { user, role, profile, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
-
-
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -322,38 +323,75 @@ const AppContent = () => {
   // Not Logged In - Render Login Page
   if (!user) {
     return (
-      <div className="min-h-screen relative flex transition-colors duration-300 overflow-hidden bg-slate-50 dark:bg-[#070b13] w-full">
-        {/* Left Side: Professional Sidebar (Desktop only) */}
-        <aside className="hidden md:flex flex-col w-80 bg-slate-900/90 backdrop-blur-2xl border-r border-white/10 text-white p-6 z-30 select-none justify-between h-screen overflow-y-auto flex-shrink-0">
-          {/* Top Section: Logo & Branding */}
-          <div className="space-y-8">
+      <div className="min-h-screen flex flex-col transition-colors duration-300 overflow-hidden bg-slate-50 dark:bg-[#070b13] w-full relative">
+        {/* Video Background */}
+        <video
+          ref={videoRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onClick={() => {
+            setIsExpanded(false);
+            setMobileMenuOpen(false);
+            setActiveDropdownState(null);
+          }}
+          className="absolute inset-0 w-full h-full object-cover z-0 cursor-pointer"
+          style={{
+            transform: 'scale(1.08) translateY(0px)',
+            transformOrigin: 'center center'
+          }}
+        >
+          <source src="/video.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+
+        {/* Dynamic Light/Dark Overlay Mask */}
+        <div
+          onClick={() => {
+            setIsExpanded(false);
+            setMobileMenuOpen(false);
+            setActiveDropdownState(null);
+          }}
+          className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/55 transition-colors duration-300 z-10 cursor-pointer"
+        ></div>
+
+        {/* Horizontal Header Top Navbar */}
+        <header className="w-full bg-[#1e293b]/95 border-b border-white/10 text-white z-40 select-none shadow-lg shrink-0">
+          <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            {/* Left: Branding */}
             <div className="flex items-center gap-3">
-              <img src="/srm_logo.png" alt="SRM Logo" className="h-12 w-12 object-contain rounded-full bg-white p-0.5 shadow-md" />
+              <img src="/srm_logo.png" alt="SRM Logo" className="h-9 w-9 sm:h-11 sm:w-11 object-contain rounded-full bg-white p-0.5 shadow-md" />
               <div className="flex flex-col">
-                <span className="text-base font-black tracking-wider leading-none uppercase text-white drop-shadow-md">SRM Portal</span>
-                <span className="text-[9px] font-black tracking-widest text-slate-350 uppercase mt-0.5 drop-shadow-sm">Class & Staff Timetable</span>
+                <span className="text-sm sm:text-base font-black tracking-wider leading-none uppercase text-white drop-shadow-md">SRM</span>
+                <span className="text-[7.5px] sm:text-[9px] font-black tracking-widest text-slate-300 uppercase mt-0.5 drop-shadow-sm">INSTITUTE OF SCIENCE & TECHNOLOGY</span>
               </div>
             </div>
 
-            {/* Sidebar Navigation Options */}
-            <div className="space-y-4 pt-4">
-              {/* Class Timetable Accordion */}
-              <div className="flex flex-col">
+            {/* Middle: Navigation options (Desktop) */}
+            <div className="hidden lg:flex items-center gap-6 relative">
+              {/* Class Timetable Dropdown */}
+              <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDropdownToggle('class');
                   }}
-                  className={`flex items-center justify-between w-full py-3 px-4 text-xs font-black tracking-widest uppercase rounded-xl transition-all duration-200 cursor-pointer ${activeDropdown === 'class' ? 'bg-brand-600/30 text-brand-300 border border-brand-500/20' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-black tracking-widest uppercase rounded-xl transition-all duration-200 cursor-pointer ${
+                    activeDropdown === 'class'
+                      ? 'bg-brand-600/30 text-brand-300 border border-brand-500/20'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <Calendar className="w-4 h-4" />
-                    Class Timetable
-                  </span>
+                  <Calendar className="w-4 h-4" />
+                  Class Timetable
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${activeDropdown === 'class' ? 'rotate-180' : ''}`} />
                 </button>
                 {activeDropdown === 'class' && (
-                  <div className="mt-2 pl-4 py-2 flex flex-col gap-2.5 border-l border-white/10 ml-6 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 shadow-2xl z-50 flex flex-col gap-3 animate-fade-in"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <input
                       type="text"
                       placeholder="Search Class/Section..."
@@ -361,7 +399,7 @@ const AppContent = () => {
                       onChange={(e) => setClassSearchQuery(e.target.value)}
                       className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
                     />
-                    <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto pr-1">
                       {classTimetables
                         .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
                         .map((item, idx) => (
@@ -370,7 +408,7 @@ const AppContent = () => {
                             onClick={() => handleSelectTimetable(item.email, item.password)}
                             className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-300 hover:text-white hover:bg-brand-500/25 rounded-lg transition-all duration-150 flex items-center gap-2 cursor-pointer"
                           >
-                            <span className="w-1 h-1 rounded-full bg-brand-400"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
                             {item.name}
                           </button>
                         ))}
@@ -379,23 +417,28 @@ const AppContent = () => {
                 )}
               </div>
 
-              {/* Staff Timetable Accordion */}
-              <div className="flex flex-col">
+              {/* Staff Timetable Dropdown */}
+              <div className="relative">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDropdownToggle('staff');
                   }}
-                  className={`flex items-center justify-between w-full py-3 px-4 text-xs font-black tracking-widest uppercase rounded-xl transition-all duration-200 cursor-pointer ${activeDropdown === 'staff' ? 'bg-brand-600/30 text-brand-300 border border-brand-500/20' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
+                  className={`flex items-center gap-2 px-4 py-2 text-xs font-black tracking-widest uppercase rounded-xl transition-all duration-200 cursor-pointer ${
+                    activeDropdown === 'staff'
+                      ? 'bg-brand-600/30 text-brand-300 border border-brand-500/20'
+                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  }`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <Users className="w-4 h-4" />
-                    Staff Timetable
-                  </span>
+                  <Users className="w-4 h-4" />
+                  Staff Timetable
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${activeDropdown === 'staff' ? 'rotate-180' : ''}`} />
                 </button>
                 {activeDropdown === 'staff' && (
-                  <div className="mt-2 pl-4 py-2 flex flex-col gap-2.5 border-l border-white/10 ml-6 animate-fade-in" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-slate-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-4 shadow-2xl z-50 flex flex-col gap-3 animate-fade-in"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <input
                       type="text"
                       placeholder="Search Staff..."
@@ -403,7 +446,7 @@ const AppContent = () => {
                       onChange={(e) => setStaffSearchQuery(e.target.value)}
                       className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
                     />
-                    <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto pr-1">
                       {staffTimetables
                         .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
                         .map((item, idx) => (
@@ -412,7 +455,7 @@ const AppContent = () => {
                             onClick={() => handleSelectTimetable(item.email, item.password)}
                             className="w-full text-left px-3 py-2 text-[11px] font-bold text-slate-300 hover:text-white hover:bg-brand-500/25 rounded-lg transition-all duration-150 flex items-center gap-2 cursor-pointer"
                           >
-                            <span className="w-1 h-1 rounded-full bg-brand-400"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-400"></span>
                             {item.name}
                           </button>
                         ))}
@@ -422,607 +465,552 @@ const AppContent = () => {
               </div>
 
               {/* Admin Timetable Option */}
-              <div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectTimetable('', '');
-                  }}
-                  className="flex items-center w-full py-3 px-4 text-xs font-black tracking-widest uppercase text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200 cursor-pointer"
-                >
-                  <span className="flex items-center gap-2.5">
-                    <UserCheck className="w-4 h-4 text-red-400" />
-                    Admin Timetable
-                  </span>
-                </button>
-              </div>
-
-              {/* Theme Toggle (Desktop only in sidebar) */}
-              <div className="pt-2 border-t border-white/10">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTheme();
-                  }}
-                  className="flex items-center w-full py-3 px-4 text-xs font-black tracking-widest uppercase text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200 cursor-pointer"
-                >
-                  <span className="flex items-center gap-2.5">
-                    {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-brand-300" />}
-                    {theme === 'dark' ? 'Light Theme' : 'Dark Theme'}
-                  </span>
-                </button>
-              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectTimetable('', '');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-black tracking-widest uppercase text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200 cursor-pointer"
+              >
+                <UserCheck className="w-4 h-4 text-red-400" />
+                Admin Timetable
+              </button>
             </div>
-          </div>
 
-          {/* Bottom Footer Info */}
-          <div className="text-[10px] text-slate-400 border-t border-white/10 pt-4 flex flex-col gap-1.5 leading-relaxed">
-            <span>SRM Timetable ERP Portal v2.1</span>
-            <span>© 2026 SRM Institute of Science & Technology</span>
-          </div>
-        </aside>
+            {/* Right: Theme & Mobile Toggle */}
+            <div className="flex items-center gap-4">
+              {/* Theme Toggle (Desktop only) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleTheme();
+                }}
+                className="hidden lg:flex p-2.5 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer shadow-md"
+              >
+                {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-brand-300" />}
+              </button>
 
-        {/* Right Side / Rest of Viewport: Video Background + Centered Login Card */}
-        <div className="flex-1 min-h-screen relative flex justify-center items-center p-4 overflow-hidden">
-          {/* Video Background */}
-          <video
-            ref={videoRef}
-            autoPlay
-            loop
-            muted
-            playsInline
-            onClick={() => {
-              setIsExpanded(false);
-              setMobileMenuOpen(false);
-            }}
-            className="absolute inset-0 w-full h-full object-cover z-0 cursor-pointer"
-            style={{
-              transform: 'scale(1.08) translateY(25px)',
-              transformOrigin: 'center center'
-            }}
-          >
-            <source src="/video.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-
-          {/* Dynamic Light/Dark Overlay Mask */}
-          <div
-            onClick={() => {
-              setIsExpanded(false);
-              setMobileMenuOpen(false);
-            }}
-            className="absolute inset-0 bg-white/30 dark:bg-[#070b13]/55 transition-colors duration-300 z-10 cursor-pointer"
-          ></div>
-
-          {/* Mobile Top Navbar (Visible below md only) */}
-          <header className="absolute top-0 left-0 right-0 w-full z-30 transition-colors duration-300 select-none flex flex-col md:hidden">
-            {/* Mobile Header Row */}
-            <div className="w-full bg-slate-900/85 backdrop-blur-md py-4 px-6 flex items-center justify-between border-b border-white/15 shadow-xl">
-              <div className="flex items-center gap-3">
-                <img src="/srm_logo.png" alt="SRM Logo" className="h-10 w-10 object-contain rounded-full bg-white p-0.5" />
-                <div className="flex flex-col text-white">
-                  <span className="text-xs font-black tracking-wider leading-none uppercase text-white">SRM Portal</span>
-                  <span className="text-[8px] font-black tracking-widest text-slate-355 uppercase mt-0.5">Institute of Science & Technology</span>
-                </div>
-              </div>
-
-              {/* Mobile Menu Toggle Button */}
+              {/* Mobile Menu Toggle */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setMobileMenuOpen(!mobileMenuOpen);
                 }}
-                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
+                className="lg:hidden p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer shadow-md"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
             </div>
+          </div>
 
-            {/* Mobile Menu Panel (Slides down below lg) */}
-            <AnimatePresence>
-              {mobileMenuOpen && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full bg-slate-950/95 backdrop-blur-xl border-b border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden md:hidden"
-                >
-                  {/* Mobile Timetable Selectors (Accordion style) */}
-                  <div className="flex flex-col gap-4 border-b border-white/10 pb-5">
-                    {/* Class Timetable Group */}
-                    <div className="flex flex-col">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDropdownToggle('class');
-                        }}
-                        className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-brand-400" />
-                          Class Timetable
-                        </span>
-                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'class' ? 'rotate-180' : ''}`} />
-                      </button>
-                      <AnimatePresence>
-                        {activeDropdown === 'class' && (
-                          <motion.div
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
-                          >
-                            <div className="px-1" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="text"
-                                placeholder="Search Class..."
-                                value={classSearchQuery}
-                                onChange={(e) => setClassSearchQuery(e.target.value)}
-                                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                              {classTimetables
-                                .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
-                                .map((item, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleSelectTimetable(item.email, item.password)}
-                                    className="text-left py-2 px-2.5 text-xs text-slate-350 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                                    {item.name}
-                                  </button>
-                                ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Staff Timetable Group */}
-                    <div className="flex flex-col">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDropdownToggle('staff');
-                        }}
-                        className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-brand-400" />
-                          Staff Timetable
-                        </span>
-                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'staff' ? 'rotate-180' : ''}`} />
-                      </button>
-                      <AnimatePresence>
-                        {activeDropdown === 'staff' && (
-                          <motion.div
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
-                          >
-                            <div className="px-1" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="text"
-                                placeholder="Search Staff..."
-                                value={staffSearchQuery}
-                                onChange={(e) => setStaffSearchQuery(e.target.value)}
-                                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-                              {staffTimetables
-                                .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
-                                .map((item, idx) => (
-                                  <button
-                                    key={idx}
-                                    onClick={() => handleSelectTimetable(item.email, item.password)}
-                                    className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
-                                    {item.name}
-                                  </button>
-                                ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Admin Timetable Group */}
-                    <div className="flex flex-col">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDropdownToggle('admin');
-                        }}
-                        className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <UserCheck className="w-4 h-4 text-red-400" />
-                          Admin Timetable
-                        </span>
-                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'admin' ? 'rotate-180' : ''}`} />
-                      </button>
-                      <AnimatePresence>
-                        {activeDropdown === 'admin' && (
-                          <motion.div
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="pl-4 py-1.5 flex flex-col gap-1 overflow-hidden"
-                          >
-                            {adminTimetables.map((item, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => handleSelectTimetable('', '')}
-                                className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                              >
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                                {item.name}
-                              </button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  {/* Theme & Actions */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-black uppercase text-slate-350">App Theme</span>
+          {/* Mobile Menu Drawer Overlay */}
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="w-full bg-slate-950/95 backdrop-blur-xl border-t border-white/10 px-8 py-6 flex flex-col gap-6 text-white overflow-hidden lg:hidden"
+              >
+                {/* Mobile Timetable Selectors */}
+                <div className="flex flex-col gap-4 border-b border-white/10 pb-5">
+                  {/* Class Timetable Group */}
+                  <div className="flex flex-col">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleTheme();
+                        handleDropdownToggle('class');
                       }}
-                      className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
+                      className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
                     >
-                      {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
-                      <span className="text-[10px] font-black uppercase">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+                      <span className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-brand-400" />
+                        Class Timetable
+                      </span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'class' ? 'rotate-180' : ''}`} />
                     </button>
+                    <AnimatePresence>
+                      {activeDropdown === 'class' && (
+                        <motion.div
+                          onClick={(e) => e.stopPropagation()}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
+                        >
+                          <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              placeholder="Search Class..."
+                              value={classSearchQuery}
+                              onChange={(e) => setClassSearchQuery(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                            {classTimetables
+                              .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
+                              .map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                  {item.name}
+                                </button>
+                              ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </header>
 
-        {/* Expanded Login Card (Centers on Page) */}
-        <AnimatePresence>
-          {isExpanded && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-md bg-white/95 dark:bg-[#0f172a]/95 border border-slate-250 dark:border-slate-800 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/10 relative z-50 overflow-hidden animate-fade-in"
-            >
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => setIsExpanded(false)}
-                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-655 dark:text-slate-500 dark:hover:text-slate-350 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                  {/* Staff Timetable Group */}
+                  <div className="flex flex-col">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle('staff');
+                      }}
+                      className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-brand-400" />
+                        Staff Timetable
+                      </span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'staff' ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {activeDropdown === 'staff' && (
+                        <motion.div
+                          onClick={(e) => e.stopPropagation()}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pl-4 py-1.5 flex flex-col gap-2 overflow-hidden"
+                        >
+                          <div className="px-1" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              placeholder="Search Staff..."
+                              value={staffSearchQuery}
+                              onChange={(e) => setStaffSearchQuery(e.target.value)}
+                              className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/40"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                            {staffTimetables
+                              .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
+                              .map((item, idx) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                                  {item.name}
+                                </button>
+                              ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-              <AnimatePresence mode="wait">
-                {loginView === 'login' ? (
-                  <motion.div
-                    key="login-view"
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15 }}
-                    transition={{ duration: 0.25 }}
+                  {/* Admin Timetable Group */}
+                  <div className="flex flex-col">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDropdownToggle('admin');
+                      }}
+                      className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
+                    >
+                      <span className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-red-400" />
+                        Admin Timetable
+                      </span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'admin' ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
+                      {activeDropdown === 'admin' && (
+                        <motion.div
+                          onClick={(e) => e.stopPropagation()}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pl-4 py-1.5 flex flex-col gap-1 overflow-hidden"
+                        >
+                          {adminTimetables.map((item, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSelectTimetable('', '')}
+                              className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                              {item.name}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                {/* Theme & Actions */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-black uppercase text-slate-350">App Theme</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTheme();
+                    }}
+                    className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all cursor-pointer flex items-center gap-1.5"
                   >
-                    {/* Header */}
-                    <div className="flex flex-col items-center mb-6 relative select-none">
+                    {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-yellow-400" /> : <Moon className="w-3.5 h-3.5 text-brand-300" />}
+                    <span className="text-[10px] font-black uppercase">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </header>
+
+        {/* Content Pane: Centered Login Card */}
+        <div className="flex-1 w-full relative flex justify-center items-center p-4 overflow-hidden z-20">
+
+          {/* Expanded Login Card (Centers on Page) */}
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-md bg-white/95 dark:bg-[#0f172a]/95 border border-slate-250 dark:border-slate-800 rounded-3xl p-8 backdrop-blur-2xl shadow-2xl shadow-brand-500/10 relative z-50 overflow-hidden animate-fade-in"
+              >
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsExpanded(false)}
+                  className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-655 dark:text-slate-500 dark:hover:text-slate-350 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                <AnimatePresence mode="wait">
+                  {loginView === 'login' ? (
+                    <motion.div
+                      key="login-view"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      {/* Header */}
+                      <div className="flex flex-col items-center mb-6 relative select-none">
+                        <img
+                          src="/srm_logo.png"
+                          alt="SRM Logo"
+                          className="h-14 object-contain mb-4 filter dark:brightness-110"
+                        />
+                        <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
+                          Sign In to Timetable
+                        </h1>
+                        <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 text-center">Enter your credential details to proceed</p>
+                      </div>
+
+                      {/* Form */}
+                      <form onSubmit={handleLoginSubmit} className="space-y-5">
+                        {showLogoutMessage && logoutDetails && (
+                          <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
+                            <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
+                              <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              Logged Out Successfully
+                            </div>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                              Thank you for using the Smart Timetable ERP Portal. Your session has been safely closed.
+                            </p>
+                            <div className="text-[9px] text-slate-400 dark:text-slate-550 border-t border-green-500/10 pt-1.5 flex flex-wrap justify-between gap-1">
+                              <span>Account: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.email}</span></span>
+                              <span>Time: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.time}</span></span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowLogoutMessage(false)}
+                              className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {loginError && (
+                          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
+                            {loginError}
+                          </div>
+                        )}
+
+                        <div className="space-y-4">
+                          {/* Username Input Container */}
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Mail className="w-4 h-4 text-slate-400 dark:text-slate-300" />
+                            </span>
+                            <input
+                              type="email"
+                              required
+                              placeholder="Username (Email)"
+                              value={email}
+                              onChange={(e) => {
+                                setEmail(e.target.value);
+                                setShowLogoutMessage(false);
+                              }}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                            />
+                          </div>
+
+                          {/* Password Input Container */}
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Lock className="w-4 h-4 text-slate-400 dark:text-slate-300" />
+                            </span>
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              required
+                              placeholder="Password"
+                              value={password}
+                              onChange={(e) => {
+                                setPassword(e.target.value);
+                                setShowLogoutMessage(false);
+                              }}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-300 hover:text-slate-655 dark:hover:text-white cursor-pointer"
+                            >
+                              {showPassword ? (
+                                <EyeOff className="w-4 h-4" />
+                              ) : (
+                                <Eye className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Captcha Input Container (Conditional for Admin) */}
+                          {email.trim().toLowerCase() === 'admin@college.edu' && (
+                            <div className="space-y-2 animate-fade-in pt-1">
+                              <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-355 tracking-wider">Security Verification</label>
+                              <div className="flex gap-3">
+                                {/* Captcha Value Display Card */}
+                                <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-950/80 dark:to-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex items-center justify-center font-mono text-lg font-black tracking-widest text-brand-600 dark:text-brand-400 select-none shadow-sm relative overflow-hidden h-[46px]">
+                                  <span className="relative z-10 filter drop-shadow-md select-none">{captchaVal}</span>
+                                  <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:16px_16px] opacity-15" />
+                                  <div className="absolute w-full h-[1px] bg-red-500/20 top-1/2 left-0 transform -translate-y-1/2 rotate-6 scale-110" />
+                                  <div className="absolute w-full h-[1px] bg-blue-500/20 top-1/2 left-0 transform -translate-y-1/2 -rotate-3 scale-110" />
+                                </div>
+                                {/* Captcha Text Input */}
+                                <input
+                                  type="text"
+                                  required
+                                  maxLength={5}
+                                  placeholder="Enter Captcha"
+                                  value={captchaInput}
+                                  onChange={(e) => setCaptchaInput(e.target.value)}
+                                  className="w-[160px] bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold tracking-widest text-center shadow-sm"
+                                />
+                              </div>
+                              <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-between px-1">
+                                <span>Updates automatically in {captchaTimer}s</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCaptchaVal(generateCaptcha());
+                                    setCaptchaTimer(30);
+                                  }}
+                                  className="text-brand-500 dark:text-brand-400 hover:underline font-bold"
+                                >
+                                  Refresh Code
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Login Submit Button */}
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
+                        >
+                          {isSubmitting ? 'Signing In...' : 'Sign In'}
+                        </button>
+                      </form>
+
+                      {/* Forget Password & Signup Links */}
+                      <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-200 select-none">
+                        <button
+                          onClick={() => {
+                            setLoginError('');
+                            setLoginView('forgot');
+                            setShowLogoutMessage(false);
+                          }}
+                          className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                        >
+                          Forget Password?
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLoginError('');
+                            setLoginView('signup');
+                            setShowLogoutMessage(false);
+                          }}
+                          className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
+                        >
+                          Create Account
+                        </button>
+                      </div>
+
+                      {/* Quick Demo Pre-fills */}
+                      <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
+                        <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-350 mb-3">Quick Login Selector</p>
+                        <select
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) return;
+                            const [emailVal, pwdVal] = val.split('|');
+                            setEmail(emailVal);
+                            setPassword(pwdVal);
+                            setShowLogoutMessage(false);
+                          }}
+                          value={email ? `${email}|${password}` : ''}
+                          className="w-full bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-100 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
+                        >
+                          <option value="">-- Choose a Seeded Account --</option>
+                          <optgroup label="Faculty Teachers (Staff)">
+                            <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
+                            <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
+                            <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
+                            <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
+                            <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
+                            <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao (drshalinirao@)</option>
+                            <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair (drrajeevnair@)</option>
+                            <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor (drnehakapoor@)</option>
+                            <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen (drpreetisen@)</option>
+                            <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma (drmanojverma@)</option>
+                            <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer (drdivyaiyer@)</option>
+                            <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi (drharishjoshi@)</option>
+                            <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair (drdeepanair@)</option>
+                            <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar (drsuryakumar@)</option>
+                            <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil (drfahadhfaasil@)</option>
+                            <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu (drmaheshbabu@)</option>
+                            <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian (mranandsubramanian@)</option>
+                            <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni (mrvijaykulkarni@)</option>
+                            <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari (mrnitingadkari@)</option>
+                            <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt (mrsanjaydutt@)</option>
+                            <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna (mrrohanbopanna@)</option>
+                            <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani (mrtaruntahiliani@)</option>
+                            <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose (mrnanighose@)</option>
+                            <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan (mrdulquersalmaan@)</option>
+                            <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi (msanithadevi@)</option>
+                            <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine (msmeenajasmine@)</option>
+                            <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao (mskavitharao@)</option>
+                            <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil (msanjalipatil@)</option>
+                            <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy (mssnehareddy@)</option>
+                            <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran (msarchanapuran@)</option>
+                          </optgroup>
+                          <optgroup label="Enrolled Students (Class/Section-wise)">
+                            <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
+                            <option value="student.mcab@college.edu|Student123!">MCA Section B (student.mcab@)</option>
+                            <option value="student.mcac@college.edu|Student123!">MCA Section C (student.mcac@)</option>
+                            <option value="student.mcad@college.edu|Student123!">MCA Section D (student.mcad@)</option>
+                            <option value="student.mcae@college.edu|Student123!">MCA Section E (student.mcae@)</option>
+                            <option value="student.mcagenaia@college.edu|Student123!">MCA (Gen AI) Section A (student.mcagenaia@)</option>
+                            <option value="student.mcagenaib@college.edu|Student123!">MCA (Gen AI) Section B (student.mcagenaib@)</option>
+                            <option value="student.mcagenaic@college.edu|Student123!">MCA (Gen AI) Section C (student.mcagenaic@)</option>
+                            <option value="student.msca@college.edu|Student123!">M.Sc. Section A (student.msca@)</option>
+                            <option value="student.mscb@college.edu|Student123!">M.Sc. Section B (student.mscb@)</option>
+                            <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
+                            <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
+                            <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
+                            <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
+                            <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
+                            <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </motion.div>
+                  ) : loginView === 'forgot' ? (
+                    <motion.div
+                      key="forgot-view"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col items-center text-center py-4"
+                    >
+                      {/* SRM University Logo */}
                       <img
                         src="/srm_logo.png"
                         alt="SRM Logo"
-                        className="h-14 object-contain mb-4 filter dark:brightness-110"
+                        className="h-12 object-contain mb-6 filter dark:brightness-110"
                       />
-                      <h1 className="text-2xl font-black text-slate-850 dark:text-white tracking-wide text-center">
-                        Sign In to Timetable
-                      </h1>
-                      <p className="text-xs text-slate-500 dark:text-slate-300 mt-1.5 text-center">Enter your credential details to proceed</p>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={handleLoginSubmit} className="space-y-5">
-                      {showLogoutMessage && logoutDetails && (
-                        <div className="p-4 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-xs rounded-2xl text-left relative animate-fade-in">
-                          <div className="font-bold mb-1 flex items-center gap-1.5 text-green-800 dark:text-green-300">
-                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                            Logged Out Successfully
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
-                            Thank you for using the Smart Timetable ERP Portal. Your session has been safely closed.
-                          </p>
-                          <div className="text-[9px] text-slate-400 dark:text-slate-550 border-t border-green-500/10 pt-1.5 flex flex-wrap justify-between gap-1">
-                            <span>Account: <span className="font-semibold text-slate-550 dark:text-slate-400">{logoutDetails.email}</span></span>
-                            <span>Time: <span className="font-semibold text-slate-555 dark:text-slate-400">{logoutDetails.time}</span></span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowLogoutMessage(false)}
-                            className="absolute top-2.5 right-2.5 text-slate-400 hover:text-slate-650 dark:text-slate-500 dark:hover:text-slate-350 cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      {loginError && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
-                          {loginError}
-                        </div>
-                      )}
-
-                      <div className="space-y-4">
-                        {/* Username Input Container */}
-                        <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Mail className="w-4 h-4 text-slate-400 dark:text-slate-300" />
-                          </span>
-                          <input
-                            type="email"
-                            required
-                            placeholder="Username (Email)"
-                            value={email}
-                            onChange={(e) => {
-                              setEmail(e.target.value);
-                              setShowLogoutMessage(false);
-                            }}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
-                          />
-                        </div>
-
-                        {/* Password Input Container */}
-                        <div className="relative">
-                          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <Lock className="w-4 h-4 text-slate-400 dark:text-slate-300" />
-                          </span>
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            required
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => {
-                              setPassword(e.target.value);
-                              setShowLogoutMessage(false);
-                            }}
-                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 dark:text-slate-300 hover:text-slate-650 dark:hover:text-white cursor-pointer"
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Captcha Input Container (Conditional for Admin) */}
-                        {email.trim().toLowerCase() === 'admin@college.edu' && (
-                          <div className="space-y-2 animate-fade-in pt-1">
-                            <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-350 tracking-wider">Security Verification</label>
-                            <div className="flex gap-3">
-                              {/* Captcha Value Display Card */}
-                              <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-950/80 dark:to-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex items-center justify-center font-mono text-lg font-black tracking-widest text-brand-600 dark:text-brand-400 select-none shadow-sm relative overflow-hidden h-[46px]">
-                                <span className="relative z-10 filter drop-shadow-md select-none">{captchaVal}</span>
-                                <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:16px_16px] opacity-15" />
-                                <div className="absolute w-full h-[1px] bg-red-500/20 top-1/2 left-0 transform -translate-y-1/2 rotate-6 scale-110" />
-                                <div className="absolute w-full h-[1px] bg-blue-500/20 top-1/2 left-0 transform -translate-y-1/2 -rotate-3 scale-110" />
-                              </div>
-                              {/* Captcha Text Input */}
-                              <input
-                                type="text"
-                                required
-                                maxLength={5}
-                                placeholder="Enter Captcha"
-                                value={captchaInput}
-                                onChange={(e) => setCaptchaInput(e.target.value)}
-                                className="w-[160px] bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold tracking-widest text-center shadow-sm"
-                              />
-                            </div>
-                            <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-between px-1">
-                              <span>Updates automatically in {captchaTimer}s</span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCaptchaVal(generateCaptcha());
-                                  setCaptchaTimer(30);
-                                }}
-                                className="text-brand-500 dark:text-brand-400 hover:underline font-bold"
-                              >
-                                Refresh Code
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                      <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
+                        <ShieldCheck className="w-8 h-8 text-brand-500 dark:text-brand-400" />
                       </div>
-
-                      {/* Login Submit Button */}
+                      <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
+                        Contact Admin
+                      </h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
+                        Please contact the System Administrator to reset your password.
+                      </p>
                       <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
+                        onClick={() => setLoginView('login')}
+                        className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
                       >
-                        {isSubmitting ? 'Signing In...' : 'Sign In'}
+                        Back to Sign In
                       </button>
-                    </form>
-
-                    {/* Forget Password & Signup Links */}
-                    <div className="flex items-center justify-between px-1 mt-5 text-xs font-bold text-slate-500 dark:text-slate-200 select-none">
-                      <button
-                        onClick={() => {
-                          setLoginError('');
-                          setLoginView('forgot');
-                          setShowLogoutMessage(false);
-                        }}
-                        className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
-                      >
-                        Forget Password?
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLoginError('');
-                          setLoginView('signup');
-                          setShowLogoutMessage(false);
-                        }}
-                        className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
-                      >
-                        Create Account
-                      </button>
-                    </div>
-
-                    {/* Quick Demo Pre-fills */}
-                    <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                      <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-350 mb-3">Quick Login Selector</p>
-                      <select
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (!val) return;
-                          const [emailVal, pwdVal] = val.split('|');
-                          setEmail(emailVal);
-                          setPassword(pwdVal);
-                          setShowLogoutMessage(false);
-                        }}
-                        value={email ? `${email}|${password}` : ''}
-                        className="w-full bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-100 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
-                      >
-                        <option value="">-- Choose a Seeded Account --</option>
-                        <optgroup label="Faculty Teachers (Staff)">
-                          <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
-                          <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
-                          <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
-                          <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
-                          <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
-                          <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao (drshalinirao@)</option>
-                          <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair (drrajeevnair@)</option>
-                          <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor (drnehakapoor@)</option>
-                          <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen (drpreetisen@)</option>
-                          <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma (drmanojverma@)</option>
-                          <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer (drdivyaiyer@)</option>
-                          <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi (drharishjoshi@)</option>
-                          <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair (drdeepanair@)</option>
-                          <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar (drsuryakumar@)</option>
-                          <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil (drfahadhfaasil@)</option>
-                          <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu (drmaheshbabu@)</option>
-                          <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian (mranandsubramanian@)</option>
-                          <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni (mrvijaykulkarni@)</option>
-                          <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari (mrnitingadkari@)</option>
-                          <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt (mrsanjaydutt@)</option>
-                          <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna (mrrohanbopanna@)</option>
-                          <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani (mrtaruntahiliani@)</option>
-                          <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose (mrnanighose@)</option>
-                          <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan (mrdulquersalmaan@)</option>
-                          <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi (msanithadevi@)</option>
-                          <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine (msmeenajasmine@)</option>
-                          <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao (mskavitharao@)</option>
-                          <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil (msanjalipatil@)</option>
-                          <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy (mssnehareddy@)</option>
-                          <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran (msarchanapuran@)</option>
-                        </optgroup>
-                        <optgroup label="Enrolled Students (Class/Section-wise)">
-                          <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
-                          <option value="student.mcab@college.edu|Student123!">MCA Section B (student.mcab@)</option>
-                          <option value="student.mcac@college.edu|Student123!">MCA Section C (student.mcac@)</option>
-                          <option value="student.mcad@college.edu|Student123!">MCA Section D (student.mcad@)</option>
-                          <option value="student.mcae@college.edu|Student123!">MCA Section E (student.mcae@)</option>
-                          <option value="student.mcagenaia@college.edu|Student123!">MCA (Gen AI) Section A (student.mcagenaia@)</option>
-                          <option value="student.mcagenaib@college.edu|Student123!">MCA (Gen AI) Section B (student.mcagenaib@)</option>
-                          <option value="student.mcagenaic@college.edu|Student123!">MCA (Gen AI) Section C (student.mcagenaic@)</option>
-                          <option value="student.msca@college.edu|Student123!">M.Sc. Section A (student.msca@)</option>
-                          <option value="student.mscb@college.edu|Student123!">M.Sc. Section B (student.mscb@)</option>
-                          <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
-                          <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
-                          <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
-                          <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
-                          <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
-                          <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                  </motion.div>
-                ) : loginView === 'forgot' ? (
-                  <motion.div
-                    key="forgot-view"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.25 }}
-                    className="flex flex-col items-center text-center py-4"
-                  >
-                    {/* SRM University Logo */}
-                    <img
-                      src="/srm_logo.png"
-                      alt="SRM Logo"
-                      className="h-12 object-contain mb-6 filter dark:brightness-110"
-                    />
-                    <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                      <ShieldCheck className="w-8 h-8 text-brand-500 dark:text-brand-400" />
-                    </div>
-                    <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                      Contact Admin
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                      Please contact the System Administrator to reset your password.
-                    </p>
-                    <button
-                      onClick={() => setLoginView('login')}
-                      className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="signup-view"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col items-center text-center py-4"
                     >
-                      Back to Sign In
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="signup-view"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.25 }}
-                    className="flex flex-col items-center text-center py-4"
-                  >
-                    {/* SRM University Logo */}
-                    <img
-                      src="/srm_logo.png"
-                      alt="SRM Logo"
-                      className="h-12 object-contain mb-6 filter dark:brightness-110"
-                    />
-                    <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                      <GraduationCap className="w-8 h-8 text-brand-500 dark:text-brand-400" />
-                    </div>
-                    <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                      Account Registration
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                      Please contact the System Administrator to create a new portal account.
-                    </p>
-                    <button
-                      onClick={() => setLoginView('login')}
-                      className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
-                    >
-                      Back to Sign In
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      {/* SRM University Logo */}
+                      <img
+                        src="/srm_logo.png"
+                        alt="SRM Logo"
+                        className="h-12 object-contain mb-6 filter dark:brightness-110"
+                      />
+                      <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
+                        <GraduationCap className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                      </div>
+                      <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
+                        Account Registration
+                      </h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
+                        Please contact the System Administrator to create a new portal account.
+                      </p>
+                      <button
+                        onClick={() => setLoginView('login')}
+                        className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
+                      >
+                        Back to Sign In
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     );
@@ -1039,6 +1027,7 @@ const AppContent = () => {
       if (activeTab === 'editor') return <TimetableEditor />;
       if (activeTab === 'crud') return <AdminCrud />;
       if (activeTab === 'reports') return <Reports />;
+      if (activeTab === 'substitution') return <SubstitutionManager />;
     }
 
     // Staff routes
@@ -1074,7 +1063,8 @@ const AppContent = () => {
       }
     }
 
-    // All-role calendar route
+    // Shared routes
+    if (activeTab === 'live') return <LiveTracker />;
     if (activeTab === 'calendar') return <AcademicCalendar />;
 
     return <Dashboard setActiveTab={setActiveTab} />;

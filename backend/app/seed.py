@@ -5,7 +5,7 @@ from backend.app.core.database import Base, engine, AsyncSessionLocal
 from backend.app.core.security import get_password_hash
 from backend.app.models.models import (
     User, Department, Subject, Staff, Student, Section, Classroom, TimeSlot,
-    staff_subject_association, SectionSubject
+    staff_subject_association, SectionSubject, AcademicCalendarEvent
 )
 
 # Baseline data definitions
@@ -389,6 +389,87 @@ async def seed_data():
                 gen_res = await generate_timetable_csp(db_gen, "2026-2027", sem)
                 print(f"Generated semester {sem}: {gen_res['message']}")
                 
+        # 12. Seed Academic Calendar Events
+        print("Seeding academic calendar events...")
+        CALENDAR_EVENTS = [
+            {"date": '2026-06-15', "title": 'Course Enrolment (II & III Year UG & II Year PG)', "type": 'event', "description": 'Course enrolment commences for II & III Year UG and II Year PG students.'},
+            {"date": '2026-06-17', "title": 'Reopening for Faculty Members', "type": 'announcement', "description": 'Faculty members report back to campus after vacation.'},
+            {"date": '2026-06-22', "title": 'Commencement of First Year Enrolment Process', "type": 'event', "description": 'First year UG & PG student enrolment process begins.'},
+            {"date": '2026-06-24', "title": 'Commencement of Classes (II & III Year UG & II Year PG)', "type": 'event', "description": 'Classes commence for II & III Year UG and II Year PG students.'},
+            {"date": '2026-06-26', "title": 'Moharam — Holiday', "type": 'holiday', "description": 'National/Religious Holiday — No classes.'},
+            {"date": '2026-06-29', "title": 'Course Enrolment (First Year UG & PG)', "type": 'event', "description": 'Course enrolment for First Year UG & PG students.'},
+            {"date": '2026-07-08', "title": 'Commencement of Classes — First Year UG & PG', "type": 'event', "description": 'Classes commence for all First Year UG & PG students.'},
+            {"date": '2026-08-04', "title": 'Cycle Test – I (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Internal Assessment / Cycle Test I for II & III Year UG & II Year PG (Except First Year).'},
+            {"date": '2026-08-05', "title": 'Cycle Test – I (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test I continues — II & III Year UG & II Year PG (Except First Year).'},
+            {"date": '2026-08-06', "title": 'Cycle Test – I (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test I continues — II & III Year UG & II Year PG (Except First Year).'},
+            {"date": '2026-08-07', "title": 'Cycle Test – I (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test I continues — II & III Year UG & II Year PG (Except First Year).'},
+            {"date": '2026-08-11', "title": 'Cycle Test – I (First Year UG & PG)', "type": 'exam', "description": 'Internal Assessment / Cycle Test I for First Year UG & PG students.'},
+            {"date": '2026-08-12', "title": 'Cycle Test – I (First Year UG & PG)', "type": 'exam', "description": 'Cycle Test I continues — First Year UG & PG students.'},
+            {"date": '2026-08-13', "title": 'Cycle Test – I (First Year UG & PG)', "type": 'exam', "description": 'Cycle Test I continues — First Year UG & PG students.'},
+            {"date": '2026-08-14', "title": 'Cycle Test – I (First Year UG & PG)', "type": 'exam', "description": 'Cycle Test I continues — First Year UG & PG students.'},
+            {"date": '2026-08-15', "title": 'Independence Day — Holiday', "type": 'holiday', "description": 'National Holiday — No classes on Independence Day.'},
+            {"date": '2026-08-17', "title": 'Question Paper Setting Last Date (SRMIST Exams)', "type": 'announcement', "description": 'Last date for question paper setting for all SRMIST IST Examinations — ALL UG & PG.'},
+            {"date": '2026-08-26', "title": 'Miladi Nabi — Holiday', "type": 'holiday', "description": 'Religious Holiday — Prophet\'s Birthday. No classes.'},
+            {"date": '2026-09-05', "title": "Teachers' Day — Holiday", "type": 'holiday', "description": 'Teachers\' Day celebration. Holiday for all.'},
+            {"date": '2026-09-14', "title": 'Vinayagar Chathurthi — Holiday', "type": 'holiday', "description": 'Vinayagar Chathurthi festival. National/Regional Holiday.'},
+            {"date": '2026-09-15', "title": 'Cycle Test – II (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test II begins for II & III Year UG & II Year PG (Except First Year).'},
+            {"date": '2026-09-16', "title": 'Cycle Test – II (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test II continues.'},
+            {"date": '2026-09-17', "title": 'Cycle Test – II (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test II continues.'},
+            {"date": '2026-09-18', "title": 'Cycle Test – II (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Cycle Test II continues.'},
+            {"date": '2026-09-21', "title": 'Cycle Test – II (First Year UG & PG)', "type": 'exam', "description": 'Cycle Test II for First Year UG & PG students.'},
+            {"date": '2026-09-22', "title": 'Cycle Test – II (First Year UG & PG)', "type": 'exam', "description": 'Cycle Test II continues — First Year UG & PG.'},
+            {"date": '2026-09-23', "title": 'Commencement of Model Practical Examination (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Model Practical Exam begins for II & III Year UG & II Year PG.'},
+            {"date": '2026-09-25', "title": 'Commencement of Model Practical Examination (First Year UG & PG)', "type": 'exam', "description": 'Model Practical Exam commences for First Year UG & PG students.'},
+            {"date": '2026-09-28', "title": 'Model Practical Examination', "type": 'exam', "description": 'Model Practical Examination continues for all UG & PG.'},
+            {"date": '2026-09-29', "title": 'Model Practical Examination', "type": 'exam', "description": 'Model Practical Examination continues.'},
+            {"date": '2026-09-30', "title": 'Model Practical Examination', "type": 'exam', "description": 'Model Practical Examination continues.'},
+            {"date": '2026-10-01', "title": 'Model Practical Examination', "type": 'exam', "description": 'Model Practical Examination continues.'},
+            {"date": '2026-10-02', "title": 'Gandhi Jayanthi — Holiday', "type": 'holiday', "description": 'National Holiday — Gandhi Jayanthi. No classes.'},
+            {"date": '2026-10-05', "title": 'Model Practical Examination', "type": 'exam', "description": 'Model Practical Examination continues.'},
+            {"date": '2026-10-06', "title": 'Commencement of Model Theory Examination (II & III Year UG & II Year PG)', "type": 'exam', "description": 'Model Theory Examination commences for II & III Year UG & II Year PG.'},
+            {"date": '2026-10-08', "title": 'Commencement of Model Theory Examination (First Year UG & PG)', "type": 'exam', "description": 'Model Theory Examination commences for First Year UG & PG.'},
+            {"date": '2026-10-14', "title": 'University Practical / Project Viva Voce Examination (ALL UG & PG, Except First Year)', "type": 'exam', "description": 'Commencement of University Practical / Project Viva Voce Examination.'},
+            {"date": '2026-10-16', "title": 'University Practical / Project Viva Voce Examination (First Year UG & PG) — Last Working Day', "type": 'exam', "description": 'University Practical / Project Viva Voce Examination for First Year. Also Last Working Day for First Year.'},
+            {"date": '2026-10-19', "title": 'Saraswathi Pooja — Holiday', "type": 'holiday', "description": 'Saraswathi Pooja Festival Holiday.'},
+            {"date": '2026-10-20', "title": 'Vijayadasami — Holiday', "type": 'holiday', "description": 'Vijayadasami Festival Holiday. No classes.'},
+            {"date": '2026-10-21', "title": 'Detention List Submission / Practical Examination', "type": 'announcement', "description": 'Detention List Submission deadline. University Practical Examination also continues.'},
+            {"date": '2026-10-26', "title": 'Internal Marks Submission (ALL UG & PG)', "type": 'announcement', "description": 'Last date for Internal Marks Submission for all UG & PG programmes.'},
+            {"date": '2026-11-02', "title": 'Commencement of University Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester University Theory Examinations begin for all UG & PG programmes.'},
+            {"date": '2026-11-03', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-04', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-05', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-06', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-08', "title": 'Deepawali — Holiday', "type": 'holiday', "description": 'Deepawali Festival Holiday. No examinations.'},
+            {"date": '2026-11-10', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations resume after Deepawali.'},
+            {"date": '2026-11-11', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-12', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-13', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-14', "title": 'End Semester Theory Examination (ALL UG & PG)', "type": 'exam', "description": 'End Semester Theory Examinations continue.'},
+            {"date": '2026-11-16', "title": 'Commencement of Central Valuation', "type": 'announcement', "description": 'Answer scripts central valuation commences for all UG & PG programmes.'},
+            {"date": '2026-11-20', "title": 'Course Enrolment for Even Semester (ALL UG & PG)', "type": 'event', "description": 'Course Enrolment opens for Even Semester for all UG & PG students.'},
+            {"date": '2026-11-30', "title": 'Commencement of Even Semester Classes (ALL UG & PG)', "type": 'event', "description": 'Even Semester classes begin for all UG & PG programmes.'},
+            {"date": '2027-01-19', "title": 'Cycle Test – I (Even Semester)', "type": 'exam', "description": 'Cycle Test I for Even Semester — All UG & PG.'},
+            {"date": '2027-01-29', "title": 'Question Paper Setting Last Date (Even Semester SRM IST Exams)', "type": 'announcement', "description": 'Last date for question paper setting for Even Semester SRMIST Examinations.'},
+            {"date": '2027-03-02', "title": 'Cycle Test – II (Even Semester)', "type": 'exam', "description": 'Cycle Test II for Even Semester — All UG & PG.'},
+            {"date": '2027-03-09', "title": 'Commencement of Model Practical Examinations (Even Sem)', "type": 'exam', "description": 'Model Practical Examinations commence for Even Semester.'},
+            {"date": '2027-03-24', "title": 'Commencement of Model Theory Examination (Even Sem)', "type": 'exam', "description": 'Model Theory Examinations commence for Even Semester.'},
+            {"date": '2027-04-02', "title": 'Last Working Day (Even Semester)', "type": 'announcement', "description": 'Last working day for Even Semester 2026-27.'},
+            {"date": '2027-04-05', "title": 'Detention List Submission (Even Semester)', "type": 'announcement', "description": 'Detention list submission deadline for Even Semester.'},
+            {"date": '2027-04-05', "title": 'University Practical Examination (Even Semester)', "type": 'exam', "description": 'Commencement of University Practical / Project Viva Voce Examinations — Even Semester.'},
+            {"date": '2027-04-09', "title": 'Internal Marks Submission (Even Semester)', "type": 'announcement', "description": 'Last date for Internal Marks Submission for Even Semester.'},
+            {"date": '2027-04-20', "title": 'Commencement of University Theory Examination (Even Sem)', "type": 'exam', "description": 'End Semester University Theory Examinations begin for Even Semester 2026-27.'},
+            {"date": '2027-05-05', "title": 'Commencement of Central Valuation (Even Semester)', "type": 'announcement', "description": 'Central Valuation of answer scripts begins for Even Semester.'}
+        ]
+        async with AsyncSessionLocal() as db_cal:
+            for ev in CALENDAR_EVENTS:
+                db_cal.add(AcademicCalendarEvent(
+                    date=ev["date"],
+                    title=ev["title"],
+                    type=ev["type"],
+                    description=ev["description"]
+                ))
+            await db_cal.commit()
+
         print("Data seeding and timetable generation completed successfully!")
 
 if __name__ == "__main__":

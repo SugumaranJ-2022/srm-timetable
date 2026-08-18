@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { adminApi } from '../services/api';
+import { adminApi, timetableApi } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import { 
   Plus, Upload, ShieldAlert, CheckCircle, GraduationCap, Home, BookOpen, Layers, 
-  FileSpreadsheet, Download, Info, Database, ChevronDown, ChevronUp, Users, AlertTriangle
+  FileSpreadsheet, Download, Info, Database, ChevronDown, ChevronUp, Users, AlertTriangle, Trash2
 } from 'lucide-react';
 
 const AdminCrud = () => {
@@ -118,6 +118,24 @@ const AdminCrud = () => {
       link.parentNode.removeChild(link);
     } catch (err) {
       setError('Failed to download the template file.');
+    }
+  };
+
+  // Wipe only solved timetables
+  const handleWipeTimetables = async () => {
+    if (!window.confirm("Are you sure you want to delete all generated timetables? This will permanently erase solved schedules but keep your classrooms, staff, and subjects.")) {
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await timetableApi.wipe();
+      setSuccess(res.message || 'Successfully wiped all timetables.');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to wipe timetables.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -406,6 +424,30 @@ const AdminCrud = () => {
             </form>
           </div>
 
+          {/* Wipe Timetables Only Panel */}
+          <div className="glass-panel p-6 rounded-3xl border border-red-500/15 dark:border-red-500/10 relative overflow-hidden bg-gradient-to-br from-white to-red-500/5 dark:from-slate-900/30 dark:to-red-650/5 shadow-md">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl"></div>
+            
+            <div className="flex items-center gap-2.5 mb-4">
+              <Trash2 className="w-5 h-5 text-red-500" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-wide">Wipe Timetable Data</h3>
+            </div>
+            
+            <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed mb-5">
+              Clear all active timetables and solved scheduling detail records from the database. This does not affect registry records such as staff, courses, sections, and classrooms.
+            </p>
+
+            <button
+              type="button"
+              onClick={handleWipeTimetables}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all disabled:opacity-50 text-xs shadow-md"
+            >
+              <Trash2 className="w-4 h-4" />
+              Wipe Timetable Schedules
+            </button>
+          </div>
+
           {/* Legacy / Single Resource Import Drawer */}
           <div className="glass-panel rounded-3xl overflow-hidden border border-slate-200/50 dark:border-slate-800/50 shadow-sm">
             <button
@@ -438,6 +480,7 @@ const AdminCrud = () => {
                       <option value="sections">Sections</option>
                       <option value="staff">Staff Roster</option>
                       <option value="students">Students List</option>
+                      <option value="calendar">Academic Calendar</option>
                     </select>
                   </div>
 

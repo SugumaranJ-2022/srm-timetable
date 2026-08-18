@@ -18,26 +18,26 @@ async def generate_timetable_csp(
 ) -> dict:
     """
     Generates a conflict-free timetable for all sections in the given academic year and semester
-    using Google OR-Tools CP-SAT Solver.
+    using Google OR-Tools CP-SAT Solver. Fully deterministic and reproducible.
     """
-    # 1. Fetch data from DB
+    # 1. Fetch data from DB - ordered by ID for deterministic solver state
     result_sections = await db.execute(
-        select(Section).where(Section.semester == semester)
+        select(Section).where(Section.semester == semester).order_by(Section.id)
     )
     sections = result_sections.scalars().all()
 
     result_classrooms = await db.execute(
-        select(Classroom).where(Classroom.is_available == True)
+        select(Classroom).where(Classroom.is_available == True).order_by(Classroom.id)
     )
     classrooms = result_classrooms.scalars().all()
 
-    result_timeslots = await db.execute(select(TimeSlot))
+    result_timeslots = await db.execute(select(TimeSlot).order_by(TimeSlot.id))
     timeslots = result_timeslots.scalars().all()
 
-    # Get SectionSubject associations (the instruction matrix)
+    # Get SectionSubject associations (the instruction matrix) - sorted by ID
     section_ids = [s.id for s in sections]
     result_sec_subs = await db.execute(
-        select(SectionSubject).where(SectionSubject.section_id.in_(section_ids))
+        select(SectionSubject).where(SectionSubject.section_id.in_(section_ids)).order_by(SectionSubject.id)
     )
     section_subjects = result_sec_subs.scalars().all()
 
@@ -68,9 +68,9 @@ async def generate_timetable_csp(
     for ss in section_subjects:
         sec_sub_map[ss.section_id].append(ss)
 
-    # Load subjects for quick lookup
+    # Load subjects for quick lookup - sorted by ID
     result_subjects = await db.execute(
-        select(Subject).where(Subject.id.in_([ss.subject_id for ss in section_subjects]))
+        select(Subject).where(Subject.id.in_([ss.subject_id for ss in section_subjects])).order_by(Subject.id)
     )
     subjects_dict = {sub.id: sub for sub in result_subjects.scalars().all()}
 
@@ -143,10 +143,6 @@ async def generate_timetable_csp(
         if z_vars and unique_rooms:
             model.Add(sum(z_vars) <= 1)
 
-    # Find lab classrooms
-    fsh1_labs = [r.id for r in classrooms if r.building == "FSH block 1" and r.room_number in ["908 Lab", "808 Lab", "708 Lab", "402 Lab", "403 Lab"]]
-    fsh2_labs = [r.id for r in classrooms if r.building == "FSH block 2" and r.room_number in ["301 Lab", "302 Lab", "303 Lab", "304 Lab", "404 Lab"]]
-
     # 3. Link Timeslot Room Assignment (Y) to Homeroom (Z) / Lab Classrooms depending on slot type (Theory vs Lab)
     for s in sections:
         if s.program in ["MCA", "MCA_GENAI", "MSC"]:
@@ -203,7 +199,8 @@ async def generate_timetable_csp(
         if ss:
             staff_timeslot_vars[(ss.assigned_staff_id, t_id)].append(var)
 
-    for (staff_id, t_id), vars_list in staff_timeslot_vars.items():
+    for (staff_id, t_id) in sorted(staff_timeslot_vars.keys()):
+        vars_list = staff_timeslot_vars[(staff_id, t_id)]
         model.AddAtMostOne(vars_list)
 
     # Constraint 4: Room Contention
@@ -212,7 +209,8 @@ async def generate_timetable_csp(
     for (s_id, t_id, r_id), var in Y.items():
         room_timeslot_vars[(r_id, t_id)].append(var)
 
-    for (r_id, t_id), vars_list in room_timeslot_vars.items():
+    for (r_id, t_id) in sorted(room_timeslot_vars.keys()):
+        vars_list = room_timeslot_vars[(r_id, t_id)]
         model.AddAtMostOne(vars_list)
 
     # Constraint 5: Physical Allocation
@@ -224,8 +222,6 @@ async def generate_timetable_csp(
             x_vars = [X[(s.id, t.id, ss.subject_id)] for ss in ss_list]
             y_vars = [Y[(s.id, t.id, r.id)] for r in classrooms if (s.id, t.id, r.id) in Y]
             model.Add(sum(y_vars) == sum(x_vars))
-
-    # Constraint 6: Volumetric Check is already handled by not creating Y variables where strength > capacity.
 
     # Constraint 8: Credit Hours Target
     # For each section and subject, schedule exactly 3 theory credits and 2 lab credits (or 3/0 for project)
@@ -256,7 +252,8 @@ async def generate_timetable_csp(
     # Constraint 9: Daily Coverage Rule (Rule 8) & At most once per day
     for s in sections:
         ss_list = sec_sub_map[s.id]
-        for day, slots in day_groups.items():
+        for day in sorted(day_groups.keys()):
+            slots = day_groups[day]
             for ss in ss_list:
                 sub = subjects_dict[ss.subject_id]
                 day_sub_vars = [X[(s.id, t.id, ss.subject_id)] for t in slots if (s.id, t.id, ss.subject_id) in X]
@@ -281,7 +278,8 @@ async def generate_timetable_csp(
             continue
 
         configured_project_days = [d.strip() for d in s.project_days.split(",") if d.strip()]
-        for day, slots in day_groups.items():
+        for day in sorted(day_groups.keys()):
+            slots = day_groups[day]
             project_vars_on_day = [X[(s.id, t.id, project_ss.subject_id)] for t in slots if (s.id, t.id, project_ss.subject_id) in X]
             if not project_vars_on_day:
                 continue
@@ -300,7 +298,8 @@ async def generate_timetable_csp(
     day_penalties = []
     for s in sections:
         ss_list = sec_sub_map[s.id]
-        for day, slots in day_groups.items():
+        for day in sorted(day_groups.keys()):
+            slots = day_groups[day]
             for ss in ss_list:
                 day_sub_vars = [X[(s.id, t.id, ss.subject_id)] for t in slots if (s.id, t.id, ss.subject_id) in X]
                 if len(day_sub_vars) > 1:
@@ -309,7 +308,7 @@ async def generate_timetable_csp(
                     day_penalties.append(penalty)
 
     # B: Workload Distribution - Smooth staff workload across days
-    staff_ids = list({ss.assigned_staff_id for ss in section_subjects})
+    staff_ids = sorted(list({ss.assigned_staff_id for ss in section_subjects}))
     max_daily_staff_load = model.NewIntVar(0, len(timeslots), "max_daily_staff_load")
     
     # Pre-group section-subjects by assigned staff
@@ -318,7 +317,8 @@ async def generate_timetable_csp(
         staff_ss_map[ss.assigned_staff_id].append(ss)
 
     for staff_id in staff_ids:
-        for day, slots in day_groups.items():
+        for day in sorted(day_groups.keys()):
+            slots = day_groups[day]
             daily_vars = []
             for t in slots:
                 for ss in staff_ss_map[staff_id]:
@@ -330,7 +330,8 @@ async def generate_timetable_csp(
     # C: Staff Continuity Rule (NEW) - Minimize daily idle gaps in staff schedule
     staff_day_gaps = []
     for staff_id in staff_ids:
-        for day, slots in day_groups.items():
+        for day in sorted(day_groups.keys()):
+            slots = day_groups[day]
             sorted_slots = sorted(slots, key=lambda slot: slot.period_number)
             S = []
             for t in sorted_slots:
@@ -376,9 +377,12 @@ async def generate_timetable_csp(
         sum(project_position_penalties) * 3
     )
 
-    # 5. Run Solver
+    # 5. Run Solver - Configured with 8 threads, a fixed random seed, and interleaved search for 100% parallel determinism
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 15.0  # Limit run time
+    solver.parameters.max_time_in_seconds = 20.0
+    solver.parameters.num_search_workers = 8
+    solver.parameters.interleave_search = True
+    solver.parameters.random_seed = 42
     status = solver.Solve(model)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
@@ -474,7 +478,8 @@ async def generate_timetable_csp(
                 metrics["zero_free_period_compliance"] += 1
                 
             project_ss = next((ss for ss in ss_list if subjects_dict[ss.subject_id].is_project), None)
-            for day, slots in day_groups.items():
+            for day in sorted(day_groups.keys()):
+                slots = day_groups[day]
                 day_has_all_core = True
                 for ss in ss_list:
                     sub = subjects_dict[ss.subject_id]

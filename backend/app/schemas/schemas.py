@@ -170,6 +170,8 @@ class TimetableDetailOut(BaseModel):
     subject_code: Optional[str] = None
     staff_name: Optional[str] = None
     room_number: Optional[str] = None
+    is_substituted: Optional[bool] = False
+    original_staff_name: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -205,3 +207,88 @@ class ConflictDetail(BaseModel):
 class ValidateOverrideResponse(BaseModel):
     is_valid: bool
     conflicts: List[ConflictDetail]
+
+
+class CalendarEventBase(BaseModel):
+    date: str
+    title: str
+    type: str  # holiday, exam, event, announcement
+    description: Optional[str] = None
+
+class CalendarEventCreate(CalendarEventBase):
+    pass
+
+class CalendarEventOut(CalendarEventBase):
+    id: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubstitutionCreate(BaseModel):
+    date: str
+    timeslot_id: int
+    original_staff_id: int
+    substitute_staff_id: int
+    timetable_detail_id: int
+
+class SubstitutionOut(BaseModel):
+    id: int
+    date: str
+    timeslot_id: int
+    original_staff_id: int
+    substitute_staff_id: int
+    timetable_detail_id: int
+    original_staff_name: str
+    substitute_staff_name: str
+    subject_name: str
+    subject_code: str
+    room_number: str
+    section_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class OngoingClassDetail(BaseModel):
+    timeslot_id: int
+    period_number: int
+    section_id: int
+    section_name: str
+    subject_name: str
+    subject_code: str
+    staff_id: int
+    staff_name: str
+    classroom_id: Optional[int] = None
+    room_number: str
+    is_substituted: bool
+    original_staff_name: Optional[str] = None
+
+class ClassroomLiveStatus(BaseModel):
+    id: int
+    room_number: str
+    building: str
+    floor: int
+    capacity: int
+    is_occupied: bool
+    utilization_pct: float = 0.0
+    current_class: Optional[OngoingClassDetail] = None
+
+class FacultyLiveStatus(BaseModel):
+    id: int
+    name: str
+    status: str
+    is_teaching: bool
+    current_class: Optional[OngoingClassDetail] = None
+
+class LiveStatusResponse(BaseModel):
+    date: str
+    day_of_week: str
+    period_number: Optional[int] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    is_break: bool
+    ongoing_classes: List[OngoingClassDetail]
+    classrooms: List[ClassroomLiveStatus]
+    faculty: List[FacultyLiveStatus]
+    is_holiday: bool = False
+    holiday_title: Optional[str] = None
+
+

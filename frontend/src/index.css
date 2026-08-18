@@ -5,7 +5,7 @@
 @layer base {
   body {
     @apply bg-slate-50 text-slate-800 dark:bg-[#070b13] dark:text-slate-100;
-    font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+    font-family: 'Times New Roman', Times, Baskerville, Georgia, serif;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 }

@@ -89,10 +89,24 @@ export const adminApi = {
 // Timetable endpoints
 export const timetableApi = {
   generate: (academicYear, semester) => api.post('/timetables/generate', { academic_year: academicYear, semester }).then(res => res.data),
-  getSectionTimetable: (sectionId) => api.get(`/timetables/section/${sectionId}`).then(res => res.data),
+  getSectionTimetable: (sectionId, date = '') => api.get(`/timetables/section/${sectionId}${date ? `?date=${date}` : ''}`).then(res => res.data),
   getStaffTimetable: (staffId) => api.get(`/timetables/staff/${staffId}`).then(res => res.data),
   validateOverride: (timetableId, details) => api.post('/timetables/validate-override', { timetable_id: timetableId, details }).then(res => res.data),
   saveOverride: (timetableId, details) => api.put('/timetables/save-override', { timetable_id: timetableId, details }).then(res => res.data),
+  wipe: () => api.post('/timetables/wipe').then(res => res.data),
+  getLiveStatus: (date, time) => api.get(`/timetables/live-status?date=${date}&time=${time}`).then(res => res.data),
+  getTeacherScheduleForAbsence: (staffId, date) => api.get(`/timetables/absence/schedule?staff_id=${staffId}&date=${date}`).then(res => res.data),
+  createSubstitution: (data) => api.post('/timetables/substitution', data).then(res => res.data),
+  deleteSubstitution: (subId) => api.delete(`/timetables/substitution/${subId}`).then(res => res.data),
+  getSubstitutionsByDate: (date) => api.get(`/timetables/substitutions/date/${date}`).then(res => res.data),
+  getStaffLoadAnalytics: () => api.get('/timetables/analytics/staff-load').then(res => res.data),
+};
+
+export const calendarApi = {
+  getEvents: () => api.get('/admin/calendar-events').then(res => res.data),
+  createEvent: (eventData) => api.post('/admin/calendar-events', eventData).then(res => res.data),
+  deleteEvent: (eventId) => api.delete(`/admin/calendar-events/${eventId}`).then(res => res.data),
+  clearEvents: () => api.delete('/admin/calendar-events-clear').then(res => res.data),
 };
 
 export default api;

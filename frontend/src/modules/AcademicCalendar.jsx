@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { calendarApi, adminApi } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft,
@@ -14,6 +15,7 @@ import {
   Trophy,
   Megaphone,
   Flag,
+  Upload,
 } from 'lucide-react';
 
 // ─── Official SRM Academic Calendar 2026-27 events (from approved PDF) ────────
@@ -233,10 +235,28 @@ export default function AcademicCalendar() {
   const today = new Date();
   const [year, setYear]         = useState(today.getFullYear());
   const [month, setMonth]       = useState(today.getMonth());
-  const [events, setEvents]     = useState(SEEDED_EVENTS);
+  const [events, setEvents]     = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterType, setFilterType]     = useState('all');
+
+  // Load calendar events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const data = await calendarApi.getEvents();
+        if (data && data.length > 0) {
+          setEvents(data);
+        } else {
+          setEvents(SEEDED_EVENTS);
+        }
+      } catch (err) {
+        console.error("Failed to load academic calendar events", err);
+        setEvents(SEEDED_EVENTS);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   // New event form state
   const [newTitle, setNewTitle] = useState('');
@@ -288,17 +308,66 @@ export default function AcademicCalendar() {
   }, [events, filterType, todayStr]);
 
   // ── Add event
-  const handleAddEvent = (e) => {
+  const handleAddEvent = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || !newDate) return;
-    const id = Date.now();
-    setEvents(prev => [...prev, { id, date: newDate, title: newTitle.trim(), type: newType, description: newDesc.trim() }]);
-    setNewTitle(''); setNewType('event'); setNewDesc(''); setNewDate('');
-    setShowAddModal(false);
+    try {
+      const newEv = await calendarApi.createEvent({
+        date: newDate,
+        title: newTitle.trim(),
+        type: newType,
+        description: newDesc.trim()
+      });
+      setEvents(prev => [...prev, newEv]);
+      setNewTitle(''); setNewType('event'); setNewDesc(''); setNewDate('');
+      setShowAddModal(false);
+    } catch (err) {
+      alert("Failed to add event to database.");
+    }
   };
 
   // ── Delete event
-  const handleDelete = (id) => setEvents(prev => prev.filter(ev => ev.id !== id));
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
+    try {
+      await calendarApi.deleteEvent(id);
+      setEvents(prev => prev.filter(ev => ev.id !== id));
+    } catch (err) {
+      alert("Failed to delete event from database.");
+    }
+  };
+
+  // Import calendar from Excel/CSV file
+  const handleImportCalendar = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const res = await adminApi.importResource('calendar', file);
+      // Reload events from database
+      const data = await calendarApi.getEvents();
+      setEvents(data);
+      alert(`Import Successful: ${res.message}`);
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to import calendar events. Please check sheet headers.");
+    } finally {
+      e.target.value = null;
+    }
+  };
+
+  // Clear all calendar events
+  const handleClearCalendar = async () => {
+    if (!window.confirm("Are you sure you want to clear ALL academic calendar events? This cannot be undone.")) {
+      return;
+    }
+    try {
+      await calendarApi.clearEvents();
+      setEvents([]);
+      alert("All calendar events have been cleared.");
+    } catch (err) {
+      alert("Failed to clear calendar events.");
+    }
+  };
 
   const todayDate = today.getDate();
 
@@ -311,13 +380,40 @@ export default function AcademicCalendar() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Holidays, exams &amp; important campus events</p>
         </div>
         {isAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-sm font-bold shadow-md hover:shadow-brand-500/25 transition-all active:scale-[0.98]"
-          >
-            <Plus className="w-4 h-4" />
-            Add Event
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Hidden File Input for Excel/CSV Import */}
+            <input
+              type="file"
+              id="calendar-file-upload"
+              accept=".csv, .xlsx, .xls"
+              className="hidden"
+              onChange={handleImportCalendar}
+            />
+            
+            <label
+              htmlFor="calendar-file-upload"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-250 dark:border-slate-850 text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-bold shadow-sm transition-all cursor-pointer select-none"
+            >
+              <Upload className="w-4 h-4 text-slate-500" />
+              Import Events
+            </label>
+
+            <button
+              onClick={handleClearCalendar}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-950/40 text-red-600 dark:text-red-400 bg-red-500/5 hover:bg-red-500/15 text-sm font-bold shadow-sm transition-all active:scale-[0.98]"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Calendar
+            </button>
+
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white text-sm font-bold shadow-md hover:shadow-brand-500/25 transition-all active:scale-[0.98]"
+            >
+              <Plus className="w-4 h-4" />
+              Add Event
+            </button>
+          </div>
         )}
       </div>
 
