@@ -69,15 +69,27 @@ def read_root():
 
 @app.get("/debug-db")
 async def debug_db(db: AsyncSession = Depends(get_db)):
-    from backend.app.models.models import User
+    from backend.app.models.models import User, Timetable, TimetableDetail, Section
     from sqlalchemy.future import select
     res = await db.execute(select(User))
     users = res.scalars().all()
+    
+    tt_res = await db.execute(select(Timetable))
+    timetables = tt_res.scalars().all()
+    
+    detail_res = await db.execute(select(TimetableDetail))
+    details = detail_res.scalars().all()
+    
+    sec_res = await db.execute(select(Section))
+    sections = sec_res.scalars().all()
+    
     db_url = settings.DATABASE_URL
     masked_url = db_url.split("@")[-1] if "@" in db_url else db_url
     return {
         "database_url_host": masked_url,
         "users_count": len(users),
-        "users_list": [u.email for u in users]
+        "sections_count": len(sections),
+        "timetables_count": len(timetables),
+        "timetable_details_count": len(details),
     }
 
