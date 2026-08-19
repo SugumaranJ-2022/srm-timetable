@@ -27,7 +27,8 @@ export default {
         }
       },
       fontFamily: {
-        sans: ['Times New Roman', 'Times', 'Baskerville', 'Georgia', 'serif'],
+        sans: ['Outfit', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['Times New Roman', 'Times', 'Baskerville', 'Georgia', 'serif'],
       },
       boxShadow: {
         'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',

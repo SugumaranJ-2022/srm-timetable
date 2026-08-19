@@ -4,9 +4,12 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-800 dark:bg-[#070b13] dark:text-slate-100;
-    font-family: 'Times New Roman', Times, Baskerville, Georgia, serif;
+    @apply bg-slate-50 text-slate-800 dark:bg-[#070b13] dark:text-slate-100 font-sans;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Times New Roman', Times, Baskerville, Georgia, serif;
   }
 }
 
