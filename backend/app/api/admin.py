@@ -42,6 +42,12 @@ async def get_departments(db: AsyncSession = Depends(get_db), current_user = Dep
 
 @router.post("/departments", response_model=DepartmentOut)
 async def create_department(dept: DepartmentCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+    # Check if a department with this name already exists to prevent unique constraint violation
+    existing_res = await db.execute(select(Department).where(Department.name == dept.name))
+    existing_dept = existing_res.scalar_one_or_none()
+    if existing_dept:
+        return existing_dept
+
     db_dept = Department(name=dept.name)
     db.add(db_dept)
     await db.commit()
