@@ -11,6 +11,13 @@ from backend.app.models.models import (
 
 logger = logging.getLogger(__name__)
 
+class StopAfterFirstSolution(cp_model.CpSolverSolutionCallback):
+    def __init__(self):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+
+    def on_solution_callback(self):
+        self.StopSearch()
+
 async def generate_timetable_csp(
     db: AsyncSession,
     academic_year: str,
@@ -388,7 +395,7 @@ async def generate_timetable_csp(
     
     solver.parameters.interleave_search = True
     solver.parameters.random_seed = 42
-    status = solver.Solve(model)
+    status = solver.Solve(model, StopAfterFirstSolution())
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         # Save generated timetable
