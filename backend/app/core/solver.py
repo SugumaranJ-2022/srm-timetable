@@ -377,10 +377,15 @@ async def generate_timetable_csp(
         sum(project_position_penalties) * 3
     )
 
-    # 5. Run Solver - Configured with 8 threads, a fixed random seed, and interleaved search for 100% parallel determinism
+    # 5. Run Solver - Configured with safe thread count to prevent cloud resource throttling and memory OOM
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 20.0
-    solver.parameters.num_search_workers = 8
+    solver.parameters.max_time_in_seconds = 25.0
+    
+    # Restrict to at most 2 workers to avoid CPU/memory starvation on cloud servers
+    import os
+    cpu_count = os.cpu_count() or 1
+    solver.parameters.num_search_workers = min(2, cpu_count)
+    
     solver.parameters.interleave_search = True
     solver.parameters.random_seed = 42
     status = solver.Solve(model)

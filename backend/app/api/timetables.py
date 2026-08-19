@@ -462,20 +462,12 @@ async def wipe_timetables(
         if is_sqlite:
             await db.execute(text("PRAGMA foreign_keys = OFF"))
         
+        # Only clear solved timetables, solved details, and substitutions
+        # This keeps registry tables (staff, subjects, sections, classrooms, timeslots) intact
         tables_to_clear = [
             "substitutions",
             "timetable_details",
-            "timetables",
-            "academic_calendar",
-            "section_subjects",
-            "staff_subject",
-            "students",
-            "staff",
-            "sections",
-            "classrooms",
-            "timeslots",
-            "subjects",
-            "departments"
+            "timetables"
         ]
         for table in tables_to_clear:
             try:
@@ -488,16 +480,13 @@ async def wipe_timetables(
                 try:
                     await db.execute(text(f"DELETE FROM {table}"))
                 except Exception:
-                    pass  # Table might not exist yet
+                    pass
             
-        # Delete non-admin users
-        await db.execute(text("DELETE FROM users WHERE role != 'Admin'"))
-        
         if is_sqlite:
             await db.execute(text("PRAGMA foreign_keys = ON"))
         await db.commit()
         
-        return {"message": "All timetables and master registry database records have been successfully wiped."}
+        return {"message": "All generated timetables and schedules have been successfully wiped."}
     except Exception as e:
         traceback.print_exc()
         await db.rollback()
