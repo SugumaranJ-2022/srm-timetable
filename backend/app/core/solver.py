@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+# pyrefly: ignore [missing-import]
 from ortools.sat.python import cp_model
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
