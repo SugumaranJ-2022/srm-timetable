@@ -7,7 +7,7 @@ from typing import List, Any
 
 from backend.app.core.database import get_db
 from backend.app.core.security import get_password_hash
-from backend.app.api.auth import get_current_admin
+from backend.app.api.auth import get_current_admin, get_current_user
 from backend.app.models.models import (
     User, Department, Subject, Staff, Student, Section, Classroom,
     staff_subject_association, SectionSubject
@@ -36,7 +36,7 @@ async def download_template(current_user = Depends(get_current_admin)):
 
 # Departments CRUD
 @router.get("/departments", response_model=List[DepartmentOut])
-async def get_departments(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_departments(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Department))
     return result.scalars().all()
 
@@ -56,7 +56,7 @@ async def create_department(dept: DepartmentCreate, db: AsyncSession = Depends(g
 
 # Subjects CRUD
 @router.get("/subjects", response_model=List[SubjectOut])
-async def get_subjects(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_subjects(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Subject))
     return result.scalars().all()
 
@@ -77,7 +77,7 @@ async def create_subject(sub: SubjectCreate, db: AsyncSession = Depends(get_db),
 
 # Classrooms CRUD
 @router.get("/classrooms", response_model=List[ClassroomOut])
-async def get_classrooms(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_classrooms(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Classroom))
     return result.scalars().all()
 
@@ -97,7 +97,7 @@ async def create_classroom(room: ClassroomCreate, db: AsyncSession = Depends(get
 
 # Sections CRUD
 @router.get("/sections", response_model=List[SectionOut])
-async def get_sections(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_sections(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Section))
     return result.scalars().all()
 
@@ -122,7 +122,7 @@ async def create_section(sec: SectionCreate, db: AsyncSession = Depends(get_db),
 
 # Staff CRUD
 @router.get("/staff", response_model=List[StaffOut])
-async def get_staff(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_staff(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Staff))
     return result.scalars().all()
 
@@ -177,7 +177,7 @@ async def create_staff(staff_in: StaffCreate, db: AsyncSession = Depends(get_db)
 
 # Students CRUD
 @router.get("/students", response_model=List[StudentOut])
-async def get_students(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_students(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(Student))
     return result.scalars().all()
 
@@ -212,7 +212,7 @@ async def create_student(student_in: StudentCreate, db: AsyncSession = Depends(g
 
 # SectionSubject association CRUD (Maps which staff teaches which subject in which section)
 @router.get("/section-subjects", response_model=List[SectionSubjectOut])
-async def get_section_subjects(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_admin)):
+async def get_section_subjects(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     result = await db.execute(select(SectionSubject))
     return result.scalars().all()
 
