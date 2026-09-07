@@ -507,9 +507,7 @@ VITE_API_BASE_URL=http://localhost:8000
 
 | Role | Email | Password |
 |------|-------|---------|
-| **Admin** | `admin@srm.edu.in` | `Admin@1234` |
-| **Staff** | `staff1@srm.edu.in` | `Staff@1234` |
-| **Student** | `student@srm.edu.in` | `Student@1234` |
+| **Admin** | `admin@college.edu` | `Admin123!` |
 
 > ⚠️ **Change all default passwords before any public or production deployment.**
 
