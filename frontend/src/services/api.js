@@ -83,7 +83,9 @@ export const adminApi = {
 
   downloadTemplate: () => {
     return api.get('/admin/download-template', { responseType: 'blob' }).then(res => res.data);
-  }
+  },
+
+  wipeAll: () => api.post('/admin/wipe-all').then(res => res.data)
 };
 
 // Timetable endpoints

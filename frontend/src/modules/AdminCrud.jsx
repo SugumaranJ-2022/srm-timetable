@@ -3,7 +3,7 @@ import { adminApi, timetableApi } from '../services/api';
 import DataGrid from '../components/DataGrid';
 import { 
   Plus, Upload, ShieldAlert, CheckCircle, GraduationCap, Home, BookOpen, Layers, 
-  FileSpreadsheet, Download, Info, Database, ChevronDown, ChevronUp, Users, AlertTriangle, Trash2
+  FileSpreadsheet, Download, Info, Database, ChevronDown, ChevronUp, Users, AlertTriangle, Trash2, Calendar
 } from 'lucide-react';
 
 const AdminCrud = () => {
@@ -132,8 +132,28 @@ const AdminCrud = () => {
     try {
       const res = await timetableApi.wipe();
       setSuccess(res.message || 'Successfully wiped all timetables.');
+      loadData();
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to wipe timetables.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Wipe entire database (master registry + timetables)
+  const handleWipeAll = async () => {
+    if (!window.confirm("DANGER: Are you sure you want to wipe ALL database records? This will delete all staff, classrooms, subjects, sections, subject maps, and timetables from the system.")) {
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await adminApi.wipeAll();
+      setSuccess(res.message || 'All database records (Master Registry & Timetables) have been wiped successfully.');
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to wipe database records.');
     } finally {
       setLoading(false);
     }
@@ -424,28 +444,40 @@ const AdminCrud = () => {
             </form>
           </div>
 
-          {/* Wipe Timetables Only Panel */}
+          {/* Wipe System Data Panel */}
           <div className="glass-panel p-6 rounded-3xl border border-red-500/15 dark:border-red-500/10 relative overflow-hidden bg-gradient-to-br from-white to-red-500/5 dark:from-slate-900/30 dark:to-red-650/5 shadow-md">
             <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl"></div>
             
-            <div className="flex items-center gap-2.5 mb-4">
+            <div className="flex items-center gap-2.5 mb-3">
               <Trash2 className="w-5 h-5 text-red-500" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-wide">Wipe Timetable Data</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-wide">Wipe & Reset System Data</h3>
             </div>
             
-            <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed mb-5">
-              Clear all active timetables and solved scheduling detail records from the database. This does not affect registry records such as staff, courses, sections, and classrooms.
+            <p className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed mb-4">
+              Clear system data. Wiping the entire database removes all master registry records (staff, classrooms, subjects, sections) and timetables to leave a completely empty database ready for a fresh Master Excel upload.
             </p>
 
-            <button
-              type="button"
-              onClick={handleWipeTimetables}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all disabled:opacity-50 text-xs shadow-md"
-            >
-              <Trash2 className="w-4 h-4" />
-              Wipe Timetable Schedules
-            </button>
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={handleWipeAll}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all disabled:opacity-50 text-xs shadow-md"
+              >
+                <Trash2 className="w-4 h-4" />
+                Wipe Entire Database (All Master Data & Timetables)
+              </button>
+
+              <button
+                type="button"
+                onClick={handleWipeTimetables}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 font-bold transition-all disabled:opacity-50 text-xs"
+              >
+                <Calendar className="w-4 h-4" />
+                Wipe Timetables Only
+              </button>
+            </div>
           </div>
 
           {/* Legacy / Single Resource Import Drawer */}

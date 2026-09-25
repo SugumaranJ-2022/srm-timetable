@@ -766,3 +766,56 @@ async def delete_calendar_event(
     await db.commit()
     return {"message": "Event deleted successfully"}
 
+@router.post("/wipe-all", status_code=status.HTTP_200_OK)
+async def wipe_all_database_data(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    from sqlalchemy import text
+    from backend.app.core.config import settings
+    import traceback
+    
+    is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+    
+    try:
+        if is_sqlite:
+            await db.execute(text("PRAGMA foreign_keys = OFF"))
+
+        tables_to_clear = [
+            "substitutions",
+            "timetable_details",
+            "timetables",
+            "academic_calendar",
+            "section_subjects",
+            "staff_subject",
+            "students",
+            "staff",
+            "sections",
+            "classrooms",
+            "timeslots",
+            "subjects",
+            "departments"
+        ]
+        for table in tables_to_clear:
+            try:
+                if is_sqlite:
+                    await db.execute(text(f"DELETE FROM {table}"))
+                else:
+                    await db.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
+            except Exception:
+                try:
+                    await db.execute(text(f"DELETE FROM {table}"))
+                except Exception:
+                    pass
+
+        if is_sqlite:
+            await db.execute(text("PRAGMA foreign_keys = ON"))
+
+        await db.commit()
+        return {"message": "All database records (Master Registry & Timetables) have been wiped successfully."}
+    except Exception as e:
+        traceback.print_exc()
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database wipe failed: {str(e)}")
+
+

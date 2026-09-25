@@ -4,7 +4,7 @@
   "description": "Timetable Management System",
   "scripts": {
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev:backend": "venv\\Scripts\\python -m uvicorn backend.app.main:app --reload",
+    "dev:backend": "backend\\venv\\Scripts\\python -m uvicorn backend.app.main:app --reload",
     "dev": "concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\""
   },
   "devDependencies": {
