@@ -1,12 +1,9 @@
 import React from 'react';
 import { Monitor, MapPin, Coffee, AlertCircle, FlaskConical } from 'lucide-react';
+import { getDayOrderInfo, WEEKDAY_TO_DO_MAP, WEEKDAY_TO_DAY_ORDER_NAME } from '../utils/dayOrder';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const PERIODS = [1, 2, 3, 4, 5, 6];
-const TODAY_NAME = (() => {
-  const d = new Date().getDay();
-  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d];
-})();
 
 // Helper to convert subject code string into a stable hex color value
 export const getStableColor = (str) => {
@@ -39,6 +36,10 @@ const TimetableGrid = ({
   projectDays = []
 }) => {
   
+  // Calculate running timetable day based on today's Academic Calendar Day Order
+  const todayInfo = React.useMemo(() => getDayOrderInfo(new Date()), []);
+  const todayRunningDay = todayInfo.isClassDay ? todayInfo.timetableDay : todayInfo.dayOfWeekName;
+
   // Group timeslots by period for easy header mapping
   const timeslotByPeriod = React.useMemo(() => {
     const map = {};
@@ -107,7 +108,8 @@ const TimetableGrid = ({
         {/* Calendar Matrix Rows */}
         <tbody className="divide-y divide-slate-200 dark:divide-slate-800/40">
           {DAYS_OF_WEEK.map((day) => {
-            const isToday = day === TODAY_NAME;
+            const isToday = day === todayRunningDay;
+            const doCode = WEEKDAY_TO_DO_MAP[day] ? `DO-${WEEKDAY_TO_DO_MAP[day]}` : null;
             return (
             <tr key={day} className={`transition-colors ${
               isToday
@@ -121,7 +123,7 @@ const TimetableGrid = ({
                   : 'text-slate-700 dark:text-slate-300 bg-slate-100/30 dark:bg-slate-950/10'
               }`}>
                 <div className="flex flex-col gap-1">
-                  <span>{day}</span>
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{WEEKDAY_TO_DAY_ORDER_NAME[day] || day}</span>
                   {isToday && (
                     <span className="text-[8px] font-extrabold bg-brand-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide w-fit animate-pulse">
                       Today

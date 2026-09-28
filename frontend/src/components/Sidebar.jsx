@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { getDayOrderInfo } from '../utils/dayOrder';
+import { getUserDisplayName } from '../utils/userFormatter';
 import {
   LayoutDashboard,
   CalendarRange,
@@ -18,7 +20,7 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [now, setNow] = useState(new Date());
 
@@ -27,11 +29,11 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const todayName = DAYS[now.getDay()];
+  const todayInfo = getDayOrderInfo(now);
+  const todayName = todayInfo.dayOfWeekName;
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   const dateStr = now.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-  const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
+  const isClassDay = todayInfo.isClassDay;
 
   if (!user) return null;
 
@@ -140,17 +142,19 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
               <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">Today</span>
             </div>
             <span className={`flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-              isWeekday
+              isClassDay
                 ? 'bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/20'
                 : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20'
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                isWeekday ? 'bg-green-500' : 'bg-amber-500'
+                isClassDay ? 'bg-green-500' : 'bg-amber-500'
               }`} />
-              {isWeekday ? 'Class Day' : 'Weekend'}
+              {todayInfo.dayOrderLabel ? `${todayInfo.dayOrderLabel} • Class Day` : (isClassDay ? 'Class Day' : 'Holiday')}
             </span>
           </div>
-          <p className="text-sm font-extrabold text-slate-800 dark:text-white">{todayName}</p>
+          <p className="text-sm font-extrabold text-slate-800 dark:text-white">
+            {todayName} {todayInfo.dayOrderLabel ? `(${todayInfo.dayOrderLabel} - ${todayInfo.timetableDay})` : ''}
+          </p>
           <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{dateStr}</p>
           <div className="flex items-center gap-1 mt-2 pt-2 border-t border-brand-500/10">
             <Clock className="w-3 h-3 text-brand-400" />
@@ -187,12 +191,13 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
           </div>
 
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-200/30 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/40 transition-all hover:bg-slate-200/50 dark:hover:bg-slate-900/50">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-md shadow-brand-500/10">
-              {user.email.substring(0, 2).toUpperCase()}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 flex items-center justify-center text-white font-extrabold text-xs shrink-0 shadow-md shadow-brand-500/10 uppercase">
+              {user.role === 'Student' ? 'ST' : user.role === 'Staff' ? 'SF' : 'AD'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate pr-1">{user.email}</p>
-              <p className="text-[10px] text-brand-500 dark:text-brand-400 tracking-wider font-black uppercase mt-0.5">{user.role}</p>
+              <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate pr-1">{getUserDisplayName(user, profile)}</p>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.email}</p>
+              <p className="text-[9px] text-brand-500 dark:text-brand-400 tracking-wider font-black uppercase mt-0.5">{user.role}</p>
             </div>
           </div>
 

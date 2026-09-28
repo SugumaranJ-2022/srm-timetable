@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { adminApi, timetableApi } from '../services/api';
+import { getDayOrderInfo, WEEKDAY_TO_DAY_ORDER_NAME } from '../utils/dayOrder';
+import { getUserDisplayName } from '../utils/userFormatter';
 import {
   Users,
   BookOpen,
@@ -202,10 +204,12 @@ const Dashboard = ({ setActiveTab }) => {
     }
   }, [user, profile]);
 
+  const todayInfo = useMemo(() => getDayOrderInfo(now), [now]);
+  const todayRunningDay = todayInfo.isClassDay ? todayInfo.timetableDay : todayInfo.dayOfWeekName;
+
   const getActiveSession = useCallback(() => {
     if (!mySchedule.length) return null;
-    const DAYS = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
-    const dayName = DAYS[now.getDay()];
+    const dayName = todayRunningDay;
     const totalMins = now.getHours() * 60 + now.getMinutes();
     let activePeriod = null;
     for (const [p, r] of Object.entries(PERIOD_RANGES)) {
@@ -215,19 +219,18 @@ const Dashboard = ({ setActiveTab }) => {
     if (activePeriod === 4) return { status: 'BREAK' };
     const active = mySchedule.find(c => c.day_of_week === dayName && c.period_number === activePeriod);
     return active ? { status: 'ACTIVE_CLASS', data: active, period: activePeriod } : { status: 'FREE_SLOT', period: activePeriod };
-  }, [mySchedule, now]);
+  }, [mySchedule, now, todayRunningDay]);
 
   const activeSession = getActiveSession();
   const gaps = user?.role === 'Staff' ? getStaffGaps(mySchedule) : [];
   const freeSlots = user?.role === 'Staff' ? getStaffFreeSlots(mySchedule) : [];
-  const todayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][now.getDay()];
+  const todayName = todayInfo.dayOfWeekName;
   const totalMins = now.getHours() * 60 + now.getMinutes();
 
   // Feature 4: Next Up preview for Staff/Student
   const nextSession = useMemo(() => {
     if (!mySchedule.length || !activeSession) return null;
-    const DAYS = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
-    const dayName = DAYS[now.getDay()];
+    const dayName = todayRunningDay;
     const currentPeriod = activeSession?.period || 0;
     // Find next teaching period (skip break at period 4)
     const nextPeriods = [1, 2, 3, 5, 6].filter(p => p > currentPeriod);
@@ -236,7 +239,7 @@ const Dashboard = ({ setActiveTab }) => {
       if (next) return { ...next, period: np, time: PERIOD_RANGES[np]?.label };
     }
     return null;
-  }, [mySchedule, now, activeSession]);
+  }, [mySchedule, now, activeSession, todayRunningDay]);
 
   if (loading) return (
     <div className="flex justify-center items-center h-[50vh]">
@@ -261,16 +264,16 @@ const Dashboard = ({ setActiveTab }) => {
               <span className="text-white/70 text-xs font-bold uppercase tracking-widest">Dashboard Overview</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight">
-              Welcome back, <span className="text-yellow-300">{user.email.split('@')[0]}</span>
+              Welcome back, <span className="text-yellow-300">{getUserDisplayName(user, profile)}</span>
             </h2>
             <p className="text-white/70 mt-1 text-sm">
               {user.role === 'Admin'
                 ? `Managing ${stats.sectionsCount} sections across ${PROGRAMS.length} programs`
-                : 'Your personal schedule is loaded and ready'}
+                : `Your personal schedule (${getUserDisplayName(user, profile)}) is loaded and ready`}
             </p>
           </div>
           <div className="shrink-0 bg-white/15 backdrop-blur-sm border border-white/20 px-5 py-3 rounded-2xl flex flex-col items-end">
-            <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{todayName}</span>
+            <span className="text-white/60 text-[10px] font-bold uppercase tracking-wider">{todayName} {todayInfo.dayOrderLabel ? `• ${todayInfo.dayOrderLabel}` : ''}</span>
             <span className="text-white font-black text-xl tabular-nums">
               {now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             </span>
@@ -347,7 +350,7 @@ const Dashboard = ({ setActiveTab }) => {
               <div className="flex items-center gap-2 mb-5">
                 <CalendarRange className="w-4 h-4 text-brand-500" />
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">Today's Schedule</h3>
-                <span className="ml-auto text-[10px] font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">{todayName}</span>
+                <span className="ml-auto text-[10px] font-bold text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full border border-brand-500/20">{todayInfo.dayOrderLabel ? `Day Order ${todayInfo.dayOrder}` : 'Holiday'}</span>
               </div>
               <div className="space-y-2">
                 {Object.entries(PERIOD_RANGES).map(([p, r]) => {
@@ -520,7 +523,7 @@ const Dashboard = ({ setActiveTab }) => {
                   </div>
                   <div>
                     <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Schedule</span>
-                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.day_of_week || 'Today'} - Period {activeSession.data.period_number}</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{WEEKDAY_TO_DAY_ORDER_NAME[activeSession.data.day_of_week] || activeSession.data.day_of_week || 'Today'} - Period {activeSession.data.period_number}</div>
                   </div>
                   <div>
                     <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Instructor</span>

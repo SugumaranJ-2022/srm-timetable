@@ -111,10 +111,13 @@ async def read_users_me(
             staff_out = StaffOut.model_validate(staff)
             
     elif current_user.role == "Student":
-        res = await db.execute(select(Student).where(Student.user_id == current_user.id))
+        from sqlalchemy.orm import selectinload
+        res = await db.execute(select(Student).options(selectinload(Student.section)).where(Student.user_id == current_user.id))
         student = res.scalar_one_or_none()
         if student:
             student_out = StudentOut.model_validate(student)
+            if student.section:
+                student_out.section_name = student.section.name
 
     user_out = UserOut.model_validate(current_user)
     return UserProfile(

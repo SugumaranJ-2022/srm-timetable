@@ -42,6 +42,7 @@ class StudentOut(BaseModel):
     register_number: str
     section_id: Optional[int] = None
     semester: int
+    section_name: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 

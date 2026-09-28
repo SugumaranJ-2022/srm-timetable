@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { timetableApi } from '../services/api';
+import { getDayOrderInfo } from '../utils/dayOrder';
 import {
   MapPin,
   Users,
@@ -122,7 +123,12 @@ const LiveTracker = () => {
             <Clock className="w-6 h-6 animate-pulse" />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Scheduled Period</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {(() => {
+                const info = getDayOrderInfo(new Date());
+                return info.dayOrderLabel ? `${info.dayOfWeekName} • ${info.dayOrderLabel} (${info.timetableDay})` : 'Scheduled Period';
+              })()}
+            </p>
             <p className="text-lg font-black text-slate-800 dark:text-white mt-0.5">
               {liveData?.is_holiday ? 'Holiday' : (liveData?.period_number ? `Hour ${liveData.period_number}` : 'No Class')}
             </p>

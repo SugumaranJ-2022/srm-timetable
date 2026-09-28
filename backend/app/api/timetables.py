@@ -541,20 +541,30 @@ async def get_live_status(
 ):
     try:
         parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-        day_of_week = parsed_date.strftime("%A")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
-    # Check if today is a Holiday in the Academic Calendar
     from backend.app.models.models import AcademicCalendarEvent, Classroom, Staff
-    cal_stmt = select(AcademicCalendarEvent).where(
-        AcademicCalendarEvent.date == date,
-        AcademicCalendarEvent.type == "holiday"
-    )
-    cal_res = await db.execute(cal_stmt)
-    holiday_event = cal_res.scalar_one_or_none()
+    from backend.app.core.day_order import get_day_order_info
+
+    # Fetch custom holiday events from DB
+    cal_res_all = await db.execute(select(AcademicCalendarEvent).where(AcademicCalendarEvent.type == "holiday"))
+    db_holidays = [ev.date for ev in cal_res_all.scalars().all()]
     
-    if holiday_event:
+    do_info = get_day_order_info(date, db_holidays)
+    day_of_week = do_info["day_of_week_name"]
+    target_day_of_week = do_info["timetable_day"] or day_of_week
+
+    # Check if today is a Holiday in the Academic Calendar
+    if do_info["is_holiday"]:
+        cal_stmt = select(AcademicCalendarEvent).where(
+            AcademicCalendarEvent.date == date,
+            AcademicCalendarEvent.type == "holiday"
+        )
+        cal_res = await db.execute(cal_stmt)
+        holiday_event = cal_res.scalar_one_or_none()
+        h_title = holiday_event.title if holiday_event else ("Weekend" if do_info["is_weekend"] else "Official Holiday")
+
         # Load all active classrooms and active staff as free/not-teaching
         cr_stmt = select(Classroom).where(Classroom.is_available == True).order_by(Classroom.room_number)
         cr_res = await db.execute(cr_stmt)
@@ -593,7 +603,7 @@ async def get_live_status(
                 ) for st in staff_list
             ],
             is_holiday=True,
-            holiday_title=holiday_event.title
+            holiday_title=h_title
         )
         
     try:
@@ -607,7 +617,7 @@ async def get_live_status(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM or HH:MM:SS.")
 
-    # Find the timeslot that covers this time on this day of week
+    # Find the timeslot that covers this time on this target timetable day of week
     ts_stmt = select(TimeSlot)
     ts_res = await db.execute(ts_stmt)
     timeslots = ts_res.scalars().all()
@@ -616,7 +626,7 @@ async def get_live_status(
     target_time_mins = parsed_time.hour * 60 + parsed_time.minute
     
     for ts in timeslots:
-        if ts.day_of_week.lower() == day_of_week.lower():
+        if ts.day_of_week.lower() == target_day_of_week.lower():
             start_mins = ts.start_time.hour * 60 + ts.start_time.minute
             end_mins = ts.end_time.hour * 60 + ts.end_time.minute
             if start_mins <= target_time_mins < end_mins:
@@ -773,18 +783,26 @@ async def get_teacher_schedule_for_absence(
 ):
     try:
         parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
-        day_of_week = parsed_date.strftime("%A")
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
-    # 1. Fetch active timeslots for the day of week (regular only)
-    ts_stmt = select(TimeSlot).where(TimeSlot.day_of_week == day_of_week, TimeSlot.slot_type == "Regular")
+    from backend.app.models.models import AcademicCalendarEvent
+    from backend.app.core.day_order import get_day_order_info
+
+    cal_res_all = await db.execute(select(AcademicCalendarEvent).where(AcademicCalendarEvent.type == "holiday"))
+    db_holidays = [ev.date for ev in cal_res_all.scalars().all()]
+
+    do_info = get_day_order_info(date, db_holidays)
+    target_day_of_week = do_info["timetable_day"] or do_info["day_of_week_name"]
+
+    # 1. Fetch active timeslots for the target day of week (regular only)
+    ts_stmt = select(TimeSlot).where(TimeSlot.day_of_week == target_day_of_week, TimeSlot.slot_type == "Regular")
     ts_res = await db.execute(ts_stmt)
     timeslots = ts_res.scalars().all()
     timeslots_map = {ts.id: ts for ts in timeslots}
     
-    if not timeslots:
-        return [] # No classes scheduled on weekends
+    if not timeslots or do_info["is_holiday"]:
+        return [] # No classes scheduled on holidays/weekends
 
     # 2. Fetch the teacher's schedule for this day
     stmt = (

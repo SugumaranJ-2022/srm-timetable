@@ -60,22 +60,22 @@ const leafVariants = (delay, duration, startLeft) => ({
 });
 
 const classTimetables = [
-  { name: "MCA - A", email: "student.mcaa@college.edu", password: "Student123!" },
-  { name: "MCA - B", email: "student.mcab@college.edu", password: "Student123!" },
-  { name: "MCA - C", email: "student.mcac@college.edu", password: "Student123!" },
-  { name: "MCA - D", email: "student.mcad@college.edu", password: "Student123!" },
-  { name: "MCA - E", email: "student.mcae@college.edu", password: "Student123!" },
-  { name: "MCA (Gen AI) - A", email: "student.mcagenaia@college.edu", password: "Student123!" },
-  { name: "MCA (Gen AI) - B", email: "student.mcagenaib@college.edu", password: "Student123!" },
-  { name: "MCA (Gen AI) - C", email: "student.mcagenaic@college.edu", password: "Student123!" },
-  { name: "M.Sc. - A", email: "student.msca@college.edu", password: "Student123!" },
-  { name: "M.Sc. - B", email: "student.mscb@college.edu", password: "Student123!" },
-  { name: "BCA - A", email: "student.bcaa@college.edu", password: "Student123!" },
-  { name: "BCA - B", email: "student.bcab@college.edu", password: "Student123!" },
-  { name: "BCA - C", email: "student.bcac@college.edu", password: "Student123!" },
-  { name: "BCA (Gen AI) - A", email: "student.bcagenaia@college.edu", password: "Student123!" },
-  { name: "BCA (Gen AI) - B", email: "student.bcagenaib@college.edu", password: "Student123!" },
-  { name: "BCA (Gen AI) - C", email: "student.bcagenaic@college.edu", password: "Student123!" }
+  { name: "Class - MCA - A", email: "student.mcaa@college.edu", password: "Student123!" },
+  { name: "Class - MCA - B", email: "student.mcab@college.edu", password: "Student123!" },
+  { name: "Class - MCA - C", email: "student.mcac@college.edu", password: "Student123!" },
+  { name: "Class - MCA - D", email: "student.mcad@college.edu", password: "Student123!" },
+  { name: "Class - MCA - E", email: "student.mcae@college.edu", password: "Student123!" },
+  { name: "Class - MCA (Gen AI) - A", email: "student.mcagenaia@college.edu", password: "Student123!" },
+  { name: "Class - MCA (Gen AI) - B", email: "student.mcagenaib@college.edu", password: "Student123!" },
+  { name: "Class - MCA (Gen AI) - C", email: "student.mcagenaic@college.edu", password: "Student123!" },
+  { name: "Class - M.Sc. - A", email: "student.msca@college.edu", password: "Student123!" },
+  { name: "Class - M.Sc. - B", email: "student.mscb@college.edu", password: "Student123!" },
+  { name: "Class - BCA - A", email: "student.bcaa@college.edu", password: "Student123!" },
+  { name: "Class - BCA - B", email: "student.bcab@college.edu", password: "Student123!" },
+  { name: "Class - BCA - C", email: "student.bcac@college.edu", password: "Student123!" },
+  { name: "Class - BCA (Gen AI) - A", email: "student.bcagenaia@college.edu", password: "Student123!" },
+  { name: "Class - BCA (Gen AI) - B", email: "student.bcagenaib@college.edu", password: "Student123!" },
+  { name: "Class - BCA (Gen AI) - C", email: "student.bcagenaic@college.edu", password: "Student123!" }
 ];
 
 const staffTimetables = [
@@ -892,54 +892,54 @@ const AppContent = () => {
                         >
                           <option value="">-- Choose a Seeded Account --</option>
                           <optgroup label="Faculty Teachers (Staff)">
-                            <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar (drrajeshkumar@)</option>
-                            <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma (drpriyasharma@)</option>
-                            <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan (drarunalagappan@)</option>
-                            <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel (drsandeepgoel@)</option>
-                            <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel (dramitpatel@)</option>
-                            <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao (drshalinirao@)</option>
-                            <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair (drrajeevnair@)</option>
-                            <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor (drnehakapoor@)</option>
-                            <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen (drpreetisen@)</option>
-                            <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma (drmanojverma@)</option>
-                            <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer (drdivyaiyer@)</option>
-                            <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi (drharishjoshi@)</option>
-                            <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair (drdeepanair@)</option>
-                            <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar (drsuryakumar@)</option>
-                            <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil (drfahadhfaasil@)</option>
-                            <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu (drmaheshbabu@)</option>
-                            <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian (mranandsubramanian@)</option>
-                            <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni (mrvijaykulkarni@)</option>
-                            <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari (mrnitingadkari@)</option>
-                            <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt (mrsanjaydutt@)</option>
-                            <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna (mrrohanbopanna@)</option>
-                            <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani (mrtaruntahiliani@)</option>
-                            <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose (mrnanighose@)</option>
-                            <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan (mrdulquersalmaan@)</option>
-                            <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi (msanithadevi@)</option>
-                            <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine (msmeenajasmine@)</option>
-                            <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao (mskavitharao@)</option>
-                            <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil (msanjalipatil@)</option>
-                            <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy (mssnehareddy@)</option>
-                            <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran (msarchanapuran@)</option>
+                            <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar</option>
+                            <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma</option>
+                            <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan</option>
+                            <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel</option>
+                            <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel</option>
+                            <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao</option>
+                            <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair</option>
+                            <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor</option>
+                            <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen</option>
+                            <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma</option>
+                            <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer</option>
+                            <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi</option>
+                            <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair</option>
+                            <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar</option>
+                            <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil</option>
+                            <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu</option>
+                            <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian</option>
+                            <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni</option>
+                            <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari</option>
+                            <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt</option>
+                            <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna</option>
+                            <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani</option>
+                            <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose</option>
+                            <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan</option>
+                            <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi</option>
+                            <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine</option>
+                            <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao</option>
+                            <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil</option>
+                            <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy</option>
+                            <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran</option>
                           </optgroup>
                           <optgroup label="Enrolled Students (Class/Section-wise)">
-                            <option value="student.mcaa@college.edu|Student123!">MCA Section A (student.mcaa@)</option>
-                            <option value="student.mcab@college.edu|Student123!">MCA Section B (student.mcab@)</option>
-                            <option value="student.mcac@college.edu|Student123!">MCA Section C (student.mcac@)</option>
-                            <option value="student.mcad@college.edu|Student123!">MCA Section D (student.mcad@)</option>
-                            <option value="student.mcae@college.edu|Student123!">MCA Section E (student.mcae@)</option>
-                            <option value="student.mcagenaia@college.edu|Student123!">MCA (Gen AI) Section A (student.mcagenaia@)</option>
-                            <option value="student.mcagenaib@college.edu|Student123!">MCA (Gen AI) Section B (student.mcagenaib@)</option>
-                            <option value="student.mcagenaic@college.edu|Student123!">MCA (Gen AI) Section C (student.mcagenaic@)</option>
-                            <option value="student.msca@college.edu|Student123!">M.Sc. Section A (student.msca@)</option>
-                            <option value="student.mscb@college.edu|Student123!">M.Sc. Section B (student.mscb@)</option>
-                            <option value="student.bcaa@college.edu|Student123!">BCA Section A (student.bcaa@)</option>
-                            <option value="student.bcab@college.edu|Student123!">BCA Section B (student.bcab@)</option>
-                            <option value="student.bcac@college.edu|Student123!">BCA Section C (student.bcac@)</option>
-                            <option value="student.bcagenaia@college.edu|Student123!">BCA (Gen AI) Section A (student.bcagenaia@)</option>
-                            <option value="student.bcagenaib@college.edu|Student123!">BCA (Gen AI) Section B (student.bcagenaib@)</option>
-                            <option value="student.bcagenaic@college.edu|Student123!">BCA (Gen AI) Section C (student.bcagenaic@)</option>
+                            <option value="student.mcaa@college.edu|Student123!">Class - MCA - A</option>
+                            <option value="student.mcab@college.edu|Student123!">Class - MCA - B</option>
+                            <option value="student.mcac@college.edu|Student123!">Class - MCA - C</option>
+                            <option value="student.mcad@college.edu|Student123!">Class - MCA - D</option>
+                            <option value="student.mcae@college.edu|Student123!">Class - MCA - E</option>
+                            <option value="student.mcagenaia@college.edu|Student123!">Class - MCA (Gen AI) - A</option>
+                            <option value="student.mcagenaib@college.edu|Student123!">Class - MCA (Gen AI) - B</option>
+                            <option value="student.mcagenaic@college.edu|Student123!">Class - MCA (Gen AI) - C</option>
+                            <option value="student.msca@college.edu|Student123!">Class - M.Sc. - A</option>
+                            <option value="student.mscb@college.edu|Student123!">Class - M.Sc. - B</option>
+                            <option value="student.bcaa@college.edu|Student123!">Class - BCA - A</option>
+                            <option value="student.bcab@college.edu|Student123!">Class - BCA - B</option>
+                            <option value="student.bcac@college.edu|Student123!">Class - BCA - C</option>
+                            <option value="student.bcagenaia@college.edu|Student123!">Class - BCA (Gen AI) - A</option>
+                            <option value="student.bcagenaib@college.edu|Student123!">Class - BCA (Gen AI) - B</option>
+                            <option value="student.bcagenaic@college.edu|Student123!">Class - BCA (Gen AI) - C</option>
                           </optgroup>
                         </select>
                       </div>
