@@ -122,6 +122,25 @@ export const timetableApi = {
   clearAllPreAllocatedSlots: () => api.delete('/timetables/pre-allocated-slots-clear-all').then(res => res.data),
   publishTimetables: (isPublished, semester = null) => api.post('/timetables/publish', { is_published: isPublished, semester }).then(res => res.data),
   getPublishStatus: () => api.get('/timetables/publish-status').then(res => res.data),
+
+  auditConflicts: () => api.get('/timetables/audit-conflicts').then(res => res.data),
+  getClassroomUtilization: () => api.get('/timetables/classrooms/utilization').then(res => res.data),
+  getSubjectProgress: () => api.get('/timetables/subjects/progress').then(res => res.data),
+  submitAutoLeaveRequest: (staffId, date, reason) => api.post('/timetables/substitutions/auto-leave', { staff_id: staffId, date, reason }).then(res => res.data),
+
+  getMasterMatrix: () => api.get('/timetables/master-matrix').then(res => res.data),
+  generateExamSchedule: (payload) => api.post('/timetables/generate-exam-schedule', payload).then(res => res.data),
+  getExamSchedules: () => api.get('/timetables/exam-schedules').then(res => res.data),
+  createBroadcast: (payload) => api.post('/timetables/broadcasts', payload).then(res => res.data),
+  getBroadcasts: () => api.get('/timetables/broadcasts').then(res => res.data),
+  updateSolverSettings: (payload) => api.post('/timetables/solver-settings', payload).then(res => res.data),
+  getSolverSettings: () => api.get('/timetables/solver-settings').then(res => res.data),
+
+  getICalUrl: (role, targetId) => `${api.defaults.baseURL || '/api/v1'}/timetables/export/ical/${role}/${targetId}`,
+  saveStaffPreferences: (payload) => api.post('/timetables/staff-preferences', payload).then(res => res.data),
+  getStaffPreferences: (staffId) => api.get(`/timetables/staff-preferences/${staffId}`).then(res => res.data),
+  getClassroomEquipmentAudit: () => api.get('/timetables/classrooms/equipment-audit').then(res => res.data),
+  getOpenElectivePool: () => api.get('/timetables/electives/pool').then(res => res.data),
 };
 
 export const calendarApi = {

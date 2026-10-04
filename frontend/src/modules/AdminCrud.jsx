@@ -1115,34 +1115,38 @@ const AdminCrud = () => {
             <div className="space-y-6">
               
               {/* Publication Status & Release Control Panel */}
-              <div className="glass-panel p-6 rounded-3xl border border-brand-500/20 bg-gradient-to-br from-brand-500/10 via-slate-900/40 to-indigo-950/20 shadow-lg">
+              <div className={`p-6 rounded-3xl border transition-all duration-300 shadow-md ${
+                publishStatus.is_published
+                  ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-teal-500/10 dark:from-emerald-950/40 dark:via-slate-900/60 dark:to-teal-950/30 border-emerald-500/30 dark:border-emerald-500/40'
+                  : 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-orange-500/10 dark:from-amber-950/40 dark:via-slate-900/60 dark:to-orange-950/30 border-amber-500/30 dark:border-amber-500/40'
+              }`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-5 h-5 text-brand-400" />
-                      <h3 className="text-base font-extrabold text-white">Timetable Release & Login Visibility</h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <Globe className={`w-5 h-5 ${publishStatus.is_published ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Timetable Release & Login Visibility</h3>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
                         publishStatus.is_published 
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40' 
+                          : 'bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40'
                       }`}>
-                        {publishStatus.is_published ? <Check className="w-3 h-3"/> : <Lock className="w-3 h-3"/>}
+                        {publishStatus.is_published ? <Check className="w-3.5 h-3.5 stroke-[3]"/> : <Lock className="w-3.5 h-3.5 stroke-[3]"/>}
                         {publishStatus.is_published ? 'PUBLISHED & LIVE' : 'DRAFT MODE (Admin Only)'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-1">
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-1.5 leading-relaxed">
                       {publishStatus.is_published 
                         ? 'Timetables are currently PUBLISHED and visible to all Class & Staff logins.' 
                         : 'Timetable is currently being prepared by Admin. Non-admin logins see a status message until published.'}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     {publishStatus.is_published ? (
                       <button
                         onClick={() => handleTogglePublish(false)}
                         disabled={loading}
-                        className="px-4 py-2.5 rounded-xl bg-amber-600/80 hover:bg-amber-600 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md"
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-extrabold text-xs flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 hover:scale-[1.02] cursor-pointer"
                       >
                         <Lock className="w-4 h-4" />
                         Unpublish to Draft Mode
@@ -1151,7 +1155,7 @@ const AdminCrud = () => {
                       <button
                         onClick={() => handleTogglePublish(true)}
                         disabled={loading}
-                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg hover:scale-[1.02]"
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/25 hover:scale-[1.02] cursor-pointer"
                       >
                         <Globe className="w-4 h-4" />
                         Complete & Publish Timetable to All Logins

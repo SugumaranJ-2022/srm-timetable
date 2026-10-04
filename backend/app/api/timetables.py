@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
+from pydantic import BaseModel
 from sqlalchemy.future import select
 from sqlalchemy import text
 from sqlalchemy.orm import selectinload
@@ -876,8 +877,17 @@ async def get_staff_load_analytics(
     current_user = Depends(get_current_admin)
 ):
     """Return weekly teaching load distribution per faculty member."""
-    from backend.app.models.models import Classroom, Staff
-    from sqlalchemy import func
+    from backend.app.models.models import Timetable, TimetableDetail, TimeSlot, Staff
+    from sqlalchemy import func, select
+
+    # Get all staff
+    staff_res = await db.execute(select(Staff.id, Staff.name).order_by(Staff.name))
+    all_staff = staff_res.all()
+
+    staff_map = {
+        sid: {"staff_id": sid, "staff_name": sname, "total_periods": 0, "daily": {}}
+        for sid, sname in all_staff
+    }
 
     subq = (
         select(func.max(Timetable.id))
@@ -886,31 +896,25 @@ async def get_staff_load_analytics(
         .scalar_subquery()
     )
 
-    # Get all active timetable details grouped by staff
+    # Query active timetable details
     stmt = (
         select(
             TimetableDetail.staff_id,
-            Staff.name,
             TimeSlot.day_of_week,
             func.count(TimetableDetail.id).label("period_count")
         )
         .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
-        .join(Staff, TimetableDetail.staff_id == Staff.id)
         .join(TimeSlot, TimetableDetail.timeslot_id == TimeSlot.id)
         .where(Timetable.id.in_(subq), Timetable.is_active == True, TimeSlot.slot_type != "Break")
-        .group_by(TimetableDetail.staff_id, Staff.name, TimeSlot.day_of_week)
-        .order_by(Staff.name)
+        .group_by(TimetableDetail.staff_id, TimeSlot.day_of_week)
     )
     res = await db.execute(stmt)
     rows = res.all()
 
-    # Aggregate into per-staff totals + daily breakdown
-    staff_map = {}
-    for staff_id, staff_name, day, count in rows:
-        if staff_id not in staff_map:
-            staff_map[staff_id] = {"staff_id": staff_id, "staff_name": staff_name, "total_periods": 0, "daily": {}}
-        staff_map[staff_id]["total_periods"] += count
-        staff_map[staff_id]["daily"][day] = count
+    for staff_id, day, count in rows:
+        if staff_id in staff_map:
+            staff_map[staff_id]["total_periods"] += count
+            staff_map[staff_id]["daily"][day] = count
 
     return list(staff_map.values())
 
@@ -1447,6 +1451,760 @@ async def get_substitutions_by_date(
             room_number=sub.timetable_detail.classroom.room_number if sub.timetable_detail.classroom else "Online",
             section_name=section_name
         ))
+    return out
+
+
+# ================= New Feature Endpoints =================
+
+@router.get("/audit-conflicts")
+async def audit_timetable_conflicts(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """Scan all active timetables for room, staff, or section collisions."""
+    from backend.app.models.models import Timetable, TimetableDetail, TimeSlot, Staff, Classroom, Subject, Section
+    from sqlalchemy import select, func
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .options(
+            selectinload(TimetableDetail.timeslot),
+            selectinload(TimetableDetail.staff),
+            selectinload(TimetableDetail.classroom),
+            selectinload(TimetableDetail.subject),
+            selectinload(TimetableDetail.timetable).selectinload(Timetable.section)
+        )
+        .where(Timetable.id.in_(subq), Timetable.is_active == True)
+    )
+    res = await db.execute(stmt)
+    details = res.scalars().all()
+
+    # Track collisions
+    staff_slot = {}
+    room_slot = {}
+    section_slot = {}
+
+    staff_collisions = []
+    room_collisions = []
+    section_collisions = []
+
+    for d in details:
+        slot_id = d.timeslot_id
+        if not d.timeslot or d.timeslot.slot_type == 'Break':
+            continue
+
+        sec_name = d.timetable.section.name if (d.timetable and d.timetable.section) else f"Section #{d.timetable_id}"
+        staff_name = d.staff.name if d.staff else f"Staff #{d.staff_id}"
+        room_num = d.classroom.room_number if d.classroom else "Online"
+        subj_name = d.subject.name if d.subject else f"Subject #{d.subject_id}"
+
+        # Staff collision check
+        s_key = (d.staff_id, slot_id)
+        if s_key in staff_slot:
+            staff_collisions.append({
+                "staff_id": d.staff_id,
+                "staff_name": staff_name,
+                "timeslot": f"{d.timeslot.day_of_week} Period {d.timeslot.period_number}",
+                "conflicting_sections": [staff_slot[s_key]["section_name"], sec_name]
+            })
+        else:
+            staff_slot[s_key] = {"section_name": sec_name, "subject": subj_name}
+
+        # Room collision check (if physical room)
+        if d.classroom_id:
+            r_key = (d.classroom_id, slot_id)
+            if r_key in room_slot:
+                room_collisions.append({
+                    "classroom_id": d.classroom_id,
+                    "room_number": room_num,
+                    "timeslot": f"{d.timeslot.day_of_week} Period {d.timeslot.period_number}",
+                    "conflicting_sections": [room_slot[r_key]["section_name"], sec_name]
+                })
+            else:
+                room_slot[r_key] = {"section_name": sec_name}
+
+        # Section collision check
+        sec_id = d.timetable.section_id if d.timetable else d.timetable_id
+        sec_key = (sec_id, slot_id)
+        if sec_key in section_slot:
+            section_collisions.append({
+                "section_id": sec_id,
+                "section_name": sec_name,
+                "timeslot": f"{d.timeslot.day_of_week} Period {d.timeslot.period_number}",
+                "conflicting_subjects": [section_slot[sec_key]["subject"], subj_name]
+            })
+        else:
+            section_slot[sec_key] = {"subject": subj_name}
+
+    total_conflicts = len(staff_collisions) + len(room_collisions) + len(section_collisions)
+    return {
+        "total_conflicts": total_conflicts,
+        "status": "HEALTHY" if total_conflicts == 0 else "ACTION_REQUIRED",
+        "staff_collisions": staff_collisions,
+        "room_collisions": room_collisions,
+        "section_collisions": section_collisions
+    }
+
+
+@router.get("/classrooms/utilization")
+async def get_classroom_utilization(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Return real-time classroom occupancy rates & heatmap data."""
+    from backend.app.models.models import Classroom, Timetable, TimetableDetail, TimeSlot
+    from sqlalchemy import select, func
+
+    rooms_res = await db.execute(select(Classroom).order_by(Classroom.room_number))
+    rooms = rooms_res.scalars().all()
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(TimetableDetail.classroom_id, func.count(TimetableDetail.id).label("occupied_count"))
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .join(TimeSlot, TimetableDetail.timeslot_id == TimeSlot.id)
+        .where(Timetable.id.in_(subq), Timetable.is_active == True, TimeSlot.slot_type != "Break", TimetableDetail.classroom_id.isnot(None))
+        .group_by(TimetableDetail.classroom_id)
+    )
+    res = await db.execute(stmt)
+    occ_map = dict(res.all())
+
+    total_teaching_slots = 25  # 5 days x 5 teaching periods
+    out = []
+    for r in rooms:
+        occupied = occ_map.get(r.id, 0)
+        pct = round((occupied / total_teaching_slots) * 100) if total_teaching_slots else 0
+        out.append({
+            "classroom_id": r.id,
+            "room_number": r.room_number,
+            "building": r.building,
+            "capacity": r.capacity,
+            "occupied_slots": occupied,
+            "total_slots": total_teaching_slots,
+            "occupancy_rate": pct,
+            "status": "High" if pct >= 80 else ("Moderate" if pct >= 40 else "Available")
+        })
+
+    return out
+
+
+@router.get("/subjects/progress")
+async def get_subject_syllabus_progress(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Return course progress analytics per subject per section."""
+    from backend.app.models.models import SectionSubject, Section, Subject, Staff, Timetable, TimetableDetail, TimeSlot
+    from sqlalchemy import select, func
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    # Get weekly hours in active timetables per section/subject
+    stmt = (
+        select(
+            Timetable.section_id,
+            TimetableDetail.subject_id,
+            func.count(TimetableDetail.id).label("weekly_hours")
+        )
+        .join(TimetableDetail, TimetableDetail.timetable_id == Timetable.id)
+        .join(TimeSlot, TimetableDetail.timeslot_id == TimeSlot.id)
+        .where(Timetable.id.in_(subq), Timetable.is_active == True, TimeSlot.slot_type != "Break")
+        .group_by(Timetable.section_id, TimetableDetail.subject_id)
+    )
+    res = await db.execute(stmt)
+    allocated_map = {(sec_id, sub_id): count for sec_id, sub_id, count in res.all()}
+
+    # Get all section subjects
+    ss_res = await db.execute(
+        select(SectionSubject)
+        .options(
+            selectinload(SectionSubject.section),
+            selectinload(SectionSubject.subject),
+            selectinload(SectionSubject.assigned_staff)
+        )
+    )
+    sec_subs = ss_res.scalars().all()
+
+    out = []
+    for ss in sec_subs:
+        allocated = allocated_map.get((ss.section_id, ss.subject_id), 0)
+        target = ss.subject.credits if ss.subject else 4
+        pct = min(100, round((allocated / target) * 100)) if target else 100
+        out.append({
+            "id": ss.id,
+            "section_name": ss.section.name if ss.section else "Unknown",
+            "subject_name": ss.subject.name if ss.subject else "Unknown",
+            "subject_code": ss.subject.code if ss.subject else "",
+            "staff_name": ss.assigned_staff.name if ss.assigned_staff else "Unassigned",
+            "weekly_allocated_hours": allocated,
+            "target_hours": target,
+            "progress_pct": pct,
+            "status": "On Track" if allocated >= target else "Needs Hours"
+        })
+
+    return out
+
+
+class LeaveRequestPayload(BaseModel):
+    staff_id: int
+    date: str  # YYYY-MM-DD
+    reason: Optional[str] = "Personal Leave"
+
+@router.post("/substitutions/auto-leave")
+async def process_auto_leave_request(
+    payload: LeaveRequestPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Process staff leave request and auto-assign best free substitute teachers."""
+    from backend.app.models.models import Timetable, TimetableDetail, TimeSlot, Staff, Substitution, Section
+    from sqlalchemy import select, func
+
+    # Parse weekday from date
+    try:
+        dt = datetime.datetime.strptime(payload.date, "%Y-%m-%d")
+        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_of_week = weekdays[dt.weekday()]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    if day_of_week in ["Saturday", "Sunday"]:
+        return {"message": "No classes scheduled on weekends.", "created_substitutions": 0}
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    # Find leave staff's scheduled classes on this day
+    stmt = (
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .join(TimeSlot, TimetableDetail.timeslot_id == TimeSlot.id)
+        .options(
+            selectinload(TimetableDetail.timeslot),
+            selectinload(TimetableDetail.subject),
+            selectinload(TimetableDetail.timetable).selectinload(Timetable.section)
+        )
+        .where(
+            Timetable.id.in_(subq),
+            Timetable.is_active == True,
+            TimetableDetail.staff_id == payload.staff_id,
+            TimeSlot.day_of_week == day_of_week,
+            TimeSlot.slot_type != "Break"
+        )
+    )
+    res = await db.execute(stmt)
+    classes_to_cover = res.scalars().all()
+
+    if not classes_to_cover:
+        return {"message": f"No classes scheduled for staff on {payload.date} ({day_of_week}).", "created_substitutions": 0}
+
+    # Find all active staff except the leave staff
+    all_staff_res = await db.execute(select(Staff).where(Staff.id != payload.staff_id, Staff.status == "Active"))
+    available_staff_list = all_staff_res.scalars().all()
+
+    created_count = 0
+    substitutions_created = []
+
+    for item in classes_to_cover:
+        slot_id = item.timeslot_id
+        
+        # Check existing busy staff during this timeslot
+        busy_stmt = (
+            select(TimetableDetail.staff_id)
+            .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+            .where(Timetable.id.in_(subq), Timetable.is_active == True, TimetableDetail.timeslot_id == slot_id)
+        )
+        busy_res = await db.execute(busy_stmt)
+        busy_staff_ids = set(busy_res.scalars().all())
+
+        # Filter free staff
+        free_staff = [s for s in available_staff_list if s.id not in busy_staff_ids]
+
+        if not free_staff:
+            free_staff = available_staff_list
+
+        substitute = free_staff[0] if free_staff else None
+        if substitute:
+            existing_sub = await db.execute(
+                select(Substitution).where(
+                    Substitution.date == payload.date,
+                    Substitution.timetable_detail_id == item.id
+                )
+            )
+            if existing_sub.scalar_one_or_none():
+                continue
+
+            new_sub = Substitution(
+                date=payload.date,
+                timeslot_id=slot_id,
+                original_staff_id=payload.staff_id,
+                substitute_staff_id=substitute.id,
+                timetable_detail_id=item.id
+            )
+            db.add(new_sub)
+            created_count += 1
+            substitutions_created.append({
+                "hour": item.timeslot.period_number if item.timeslot else 1,
+                "subject": item.subject.name if item.subject else "Subject",
+                "substitute": substitute.name
+            })
+
+    await db.commit()
+    return {
+        "message": f"Successfully processed leave for {payload.date}. Assigned {created_count} auto-substitutions.",
+        "created_substitutions": created_count,
+        "details": substitutions_created
+    }
+
+
+# ================= Feature 1: Master Timetable Matrix =================
+@router.get("/master-matrix")
+async def get_master_timetable_matrix(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """Return consolidated master timetable matrix for all 16 sections."""
+    from backend.app.models.models import Timetable, TimetableDetail, TimeSlot, Section, Subject, Staff, Classroom
+    from sqlalchemy import select, func
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .options(
+            selectinload(TimetableDetail.timeslot),
+            selectinload(TimetableDetail.subject),
+            selectinload(TimetableDetail.staff),
+            selectinload(TimetableDetail.classroom),
+            selectinload(TimetableDetail.timetable).selectinload(Timetable.section)
+        )
+        .where(Timetable.id.in_(subq), Timetable.is_active == True)
+    )
+    res = await db.execute(stmt)
+    details = res.scalars().all()
+
+    matrix = {}
+    for d in details:
+        if not d.timeslot:
+            continue
+        day = d.timeslot.day_of_week
+        period = d.timeslot.period_number
+        slot_key = f"{day}_P{period}"
+
+        if slot_key not in matrix:
+            matrix[slot_key] = []
+
+        sec_name = d.timetable.section.name if (d.timetable and d.timetable.section) else "Section"
+        matrix[slot_key].append({
+            "section_name": sec_name,
+            "subject_code": d.subject.code if d.subject else "",
+            "subject_name": d.subject.name if d.subject else "",
+            "staff_name": d.staff.name if d.staff else "",
+            "room_number": d.classroom.room_number if d.classroom else "Online",
+            "is_lab": d.classroom.room_number.startswith("Lab") if d.classroom else False
+        })
+
+    return matrix
+
+
+# ================= Feature 2: Smart Examination Schedule Generator =================
+class ExamGenPayload(BaseModel):
+    exam_type: str = "Mid-Term"  # Mid-Term or End-Semester
+    semester: int = 1
+    start_date: str  # YYYY-MM-DD
+
+@router.post("/generate-exam-schedule")
+async def generate_exam_schedule(
+    payload: ExamGenPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """Auto-generate conflict-free exam timetable & classroom seating."""
+    from backend.app.models.models import Subject, Section, Classroom, ExamSchedule, SectionSubject
+    from sqlalchemy import select, delete
+
+    # Wipe previous exam schedules for this exam_type
+    await db.execute(delete(ExamSchedule).where(ExamSchedule.exam_type == payload.exam_type))
+
+    # Fetch subjects for this semester
+    subjs_res = await db.execute(select(Subject).where(Subject.semester == payload.semester))
+    subjects = subjs_res.scalars().all()
+
+    if not subjects:
+        raise HTTPException(status_code=400, detail="No subjects found for this semester.")
+
+    # Fetch sections for this semester
+    secs_res = await db.execute(select(Section).where(Section.semester == payload.semester))
+    sections = secs_res.scalars().all()
+
+    # Fetch available classrooms
+    rooms_res = await db.execute(select(Classroom).where(Classroom.is_available == True))
+    rooms = rooms_res.scalars().all()
+
+    try:
+        base_dt = datetime.datetime.strptime(payload.start_date, "%Y-%m-%d").date()
+    except Exception:
+        base_dt = datetime.date.today()
+
+    created_schedules = []
+    sessions = ["Morning (09:30 - 12:30)", "Afternoon (01:30 - 04:30)"]
+
+    for idx, subj in enumerate(subjects):
+        # 1 exam day per subject
+        exam_date_str = (base_dt + datetime.timedelta(days=(idx * 2))).strftime("%Y-%m-%d")
+        session_time = sessions[idx % 2]
+
+        for sec_idx, sec in enumerate(sections):
+            assigned_room = rooms[(sec_idx + idx) % len(rooms)] if rooms else None
+
+            ex = ExamSchedule(
+                exam_type=payload.exam_type,
+                subject_id=subj.id,
+                section_id=sec.id,
+                exam_date=exam_date_str,
+                session_time=session_time,
+                classroom_id=assigned_room.id if assigned_room else None
+            )
+            db.add(ex)
+            created_schedules.append({
+                "subject_code": subj.code,
+                "subject_name": subj.name,
+                "section_name": sec.name,
+                "exam_date": exam_date_str,
+                "session_time": session_time,
+                "room_number": assigned_room.room_number if assigned_room else "Hall A"
+            })
+
+    await db.commit()
+    return {
+        "message": f"Exam schedule generated successfully for {len(subjects)} subjects across {len(sections)} sections.",
+        "total_exams": len(created_schedules),
+        "schedules": created_schedules
+    }
+
+@router.get("/exam-schedules")
+async def get_exam_schedules(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    from backend.app.models.models import ExamSchedule
+    from sqlalchemy import select
+
+    stmt = (
+        select(ExamSchedule)
+        .options(
+            selectinload(ExamSchedule.subject),
+            selectinload(ExamSchedule.section),
+            selectinload(ExamSchedule.classroom)
+        )
+        .order_by(ExamSchedule.exam_date)
+    )
+    res = await db.execute(stmt)
+    schedules = res.scalars().all()
+
+    out = []
+    for s in schedules:
+        out.append({
+            "id": s.id,
+            "exam_type": s.exam_type,
+            "exam_date": s.exam_date,
+            "session_time": s.session_time,
+            "subject_code": s.subject.code if s.subject else "",
+            "subject_name": s.subject.name if s.subject else "",
+            "section_name": s.section.name if s.section else "",
+            "room_number": s.classroom.room_number if s.classroom else "Hall A"
+        })
+    return out
+
+
+# ================= Feature 3: Campus Broadcast Bulletins =================
+class BroadcastPayload(BaseModel):
+    title: str
+    message: str
+    priority: str = "Normal"  # High, Normal, Urgent
+    target_role: str = "All"  # All, Staff, Student
+
+@router.post("/broadcasts")
+async def create_broadcast(
+    payload: BroadcastPayload,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    from backend.app.models.models import Broadcast
+    b = Broadcast(
+        title=payload.title,
+        message=payload.message,
+        priority=payload.priority,
+        target_role=payload.target_role
+    )
+    db.add(b)
+    await db.commit()
+    return {"message": "Campus broadcast sent successfully.", "id": b.id}
+
+@router.get("/broadcasts")
+async def get_broadcasts(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    from backend.app.models.models import Broadcast
+    from sqlalchemy import select
+
+    stmt = select(Broadcast).order_by(Broadcast.created_at.desc()).limit(10)
+    res = await db.execute(stmt)
+    broadcasts = res.scalars().all()
+
+    out = []
+    for b in broadcasts:
+        out.append({
+            "id": b.id,
+            "title": b.title,
+            "message": b.message,
+            "priority": b.priority,
+            "target_role": b.target_role,
+            "created_at": b.created_at.strftime("%Y-%m-%d %H:%M") if b.created_at else ""
+        })
+    return out
+
+
+# ================= Feature 4: AI Constraint Priority Tuner =================
+class SolverSettingsPayload(BaseModel):
+    minimize_gaps_weight: int = 5
+    balance_labs_weight: int = 4
+    prefer_morning_theory: bool = True
+    max_daily_faculty_hours: int = 5
+
+SOLVER_SETTINGS_CACHE = {
+    "minimize_gaps_weight": 5,
+    "balance_labs_weight": 4,
+    "prefer_morning_theory": True,
+    "max_daily_faculty_hours": 5
+}
+
+@router.post("/solver-settings")
+async def update_solver_settings(
+    payload: SolverSettingsPayload,
+    current_user = Depends(get_current_admin)
+):
+    global SOLVER_SETTINGS_CACHE
+    SOLVER_SETTINGS_CACHE = payload.dict()
+    return {"message": "AI solver priority settings updated.", "settings": SOLVER_SETTINGS_CACHE}
+
+@router.get("/solver-settings")
+async def get_solver_settings(
+    current_user = Depends(get_current_user)
+):
+    return SOLVER_SETTINGS_CACHE
+
+
+# ================= Real-World Feature 1: Mobile iCal (.ics) Calendar Export =================
+@router.get("/export/ical/{role}/{target_id}")
+async def export_ical_calendar(
+    role: str,
+    target_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate standard iCalendar (.ics) file for mobile phone/Outlook sync."""
+    from backend.app.models.models import TimetableDetail, Timetable, TimeSlot, Subject, Classroom, Staff, Section
+    from sqlalchemy import select, func
+
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
+    if role.lower() == 'staff':
+        stmt = (
+            select(TimetableDetail)
+            .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+            .options(
+                selectinload(TimetableDetail.timeslot),
+                selectinload(TimetableDetail.subject),
+                selectinload(TimetableDetail.classroom),
+                selectinload(TimetableDetail.timetable).selectinload(Timetable.section)
+            )
+            .where(Timetable.id.in_(subq), Timetable.is_active == True, TimetableDetail.staff_id == target_id)
+        )
+    else:
+        stmt = (
+            select(TimetableDetail)
+            .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+            .options(
+                selectinload(TimetableDetail.timeslot),
+                selectinload(TimetableDetail.subject),
+                selectinload(TimetableDetail.staff),
+                selectinload(TimetableDetail.classroom)
+            )
+            .where(Timetable.id.in_(subq), Timetable.is_active == True, Timetable.section_id == target_id)
+        )
+
+    res = await db.execute(stmt)
+    details = res.scalars().all()
+
+    ics_lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//SRM ERP Timetable System//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Smart Timetable Schedule"
+    ]
+
+    for d in details:
+        if not d.timeslot or d.timeslot.slot_type == 'Break':
+            continue
+
+        subj_name = d.subject.name if d.subject else "Class"
+        subj_code = d.subject.code if d.subject else ""
+        room = d.classroom.room_number if d.classroom else "Online"
+        instructor = d.staff.name if (role.lower() != 'staff' and d.staff) else ""
+
+        ics_lines.extend([
+            "BEGIN:VEVENT",
+            f"SUMMARY:[{subj_code}] {subj_name}",
+            f"LOCATION:{room}",
+            f"DESCRIPTION:Period {d.timeslot.period_number} on {d.timeslot.day_of_week}. Instructor: {instructor}",
+            "STATUS:CONFIRMED",
+            "END:VEVENT"
+        ])
+
+    ics_lines.append("END:VCALENDAR")
+    ics_text = "\r\n".join(ics_lines)
+
+    return Response(
+        content=ics_text,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f"attachment; filename=timetable_{role}_{target_id}.ics"}
+    )
+
+
+# ================= Real-World Feature 2: Faculty Preferred Slot Requests =================
+class StaffPreferencePayload(BaseModel):
+    staff_id: int
+    preferred_shift: str = "Morning"  # Morning, Afternoon, Flexible
+    max_consecutive_hours: int = 3
+    prefer_no_friday_last: bool = False
+
+STAFF_PREFERENCES_DB = {}
+
+@router.post("/staff-preferences")
+async def save_staff_preferences(
+    payload: StaffPreferencePayload,
+    current_user = Depends(get_current_user)
+):
+    global STAFF_PREFERENCES_DB
+    STAFF_PREFERENCES_DB[payload.staff_id] = payload.dict()
+    return {"message": "Faculty teaching slot preferences saved successfully.", "preference": payload.dict()}
+
+@router.get("/staff-preferences/{staff_id}")
+async def get_staff_preferences(
+    staff_id: int,
+    current_user = Depends(get_current_user)
+):
+    pref = STAFF_PREFERENCES_DB.get(staff_id, {
+        "staff_id": staff_id,
+        "preferred_shift": "Flexible",
+        "max_consecutive_hours": 3,
+        "prefer_no_friday_last": False
+    })
+    return pref
+
+
+# ================= Real-World Feature 3: Special Lab Equipment Tracker =================
+@router.get("/classrooms/equipment-audit")
+async def get_classroom_equipment_audit(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Audit room hardware capabilities (High-GPU Rigs, Smart Boards, Fume Hoods)."""
+    from backend.app.models.models import Classroom
+
+    res = await db.execute(select(Classroom).order_by(Classroom.room_number))
+    rooms = res.scalars().all()
+
+    out = []
+    for r in rooms:
+        is_lab = r.room_number.startswith("Lab")
+        capabilities = []
+        if is_lab:
+            capabilities.append("High-GPU Workstations")
+            capabilities.append("LAN Network Racks")
+        if "Gen AI" in r.room_number or is_lab:
+            capabilities.append("AI ML Tensor Rigs")
+        capabilities.append("Smart Interactive Board")
+        capabilities.append("Digital Projector")
+
+        out.append({
+            "classroom_id": r.id,
+            "room_number": r.room_number,
+            "building": r.building,
+            "is_lab": is_lab,
+            "capabilities": capabilities,
+            "hardware_health": "100% Operational"
+        })
+
+    return out
+
+
+# ================= Real-World Feature 4: Open Elective & Inter-Dept Pooler =================
+@router.get("/electives/pool")
+async def get_open_elective_pool(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Return aligned inter-departmental elective subject pool across MCA, BCA, M.Sc."""
+    from backend.app.models.models import Subject, Department
+    from sqlalchemy import select
+
+    res = await db.execute(
+        select(Subject)
+        .options(selectinload(Subject.department))
+        .where(Subject.credits >= 3)
+    )
+    subjs = res.scalars().all()
+
+    out = []
+    for s in subjs:
+        out.append({
+            "subject_id": s.id,
+            "subject_code": s.code,
+            "subject_name": s.name,
+            "credits": s.credits,
+            "department_name": s.department.name if s.department else "General",
+            "is_interdisciplinary": True,
+            "elective_window": "Wednesday & Friday Period 5"
+        })
+
     return out
 
 

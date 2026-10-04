@@ -1054,8 +1054,8 @@ async def update_classroom(
     cr.building = cr_in.building
     cr.floor = cr_in.floor
     cr.capacity = cr_in.capacity
-    if cr_in.room_type:
-        cr.room_type = cr_in.room_type
+    if getattr(cr_in, 'room_type', None) and hasattr(cr, 'room_type'):
+        cr.room_type = getattr(cr_in, 'room_type')
 
     await db.commit()
     await db.refresh(cr)

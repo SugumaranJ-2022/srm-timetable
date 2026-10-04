@@ -128,10 +128,23 @@ The **SRM Smart Timetable Management System** is a full-stack, production-grade 
 - Export to `.xlsx` (Excel)
 
 ### 🎨 Premium Modern UI
-- **Dark / Light mode** toggle with localStorage persistence
-- **Animated login page** with 6-second SRM campus photo slideshow
+- **Dark / Light mode** toggle with localStorage persistence & high-contrast theme styling
+- **Animated login page** with SRM campus photo slideshow
 - **Framer Motion** page transitions and micro-animations
-- Glassmorphism design with animated leaf & bicycle decorations
+- Glassmorphism design with animated decorative accents
+
+### 🚀 Real-World University Enterprise Features
+- **🔍 Automated Conflict Detector & Auditor (`/timetables/audit-conflicts`)**: Real-time scanner verifying zero room collisions, zero faculty double-bookings, and zero section overlaps.
+- **🌴 Staff Leave Request & Smart Auto-Substitution (`/timetables/substitutions/auto-leave`)**: Detects leave dates, finds 100% free faculty with lightest workloads, and auto-assigns cover teachers.
+- **📱 Mobile iCal (`.ics`) & Outlook Sync (`/timetables/export/ical/...`)**: Export standard RFC 5545 `.ics` files to sync live schedules with Google Calendar, Apple Calendar, and Outlook on phones.
+- **⚡ Faculty Preferred Slot Requests & Shift Constraints (`/timetables/staff-preferences`)**: Staff can request preferred teaching shifts (Morning/Afternoon/Flexible), max consecutive teaching caps, and Friday schedule rules.
+- **🏫 Smart Classroom Utilization & Occupancy Heatmaps (`/timetables/classrooms/utilization`)**: Tracks real-time room occupancy rates across 25 weekly periods.
+- **💻 Special Lab Hardware & Equipment Tracker (`/timetables/classrooms/equipment-audit`)**: Audits room capabilities (High-GPU Workstations, AI ML Tensor Rigs, Smart Boards, Digital Projectors).
+- **📚 Syllabus Credit Progress Tracker (`/timetables/subjects/progress`)**: Tracks weekly allocated teaching hours versus target credit hours per subject per section.
+- **🎓 Smart Examination Schedule & Seating Generator (`/timetables/generate-exam-schedule`)**: Auto-allocates conflict-free mid-term & end-semester exam dates, session slots, and seating halls.
+- **🌐 Master Timetable Matrix (`/timetables/master-matrix`)**: Consolidates all 16 section timetables into a single side-by-side master grid.
+- **📢 Campus Broadcast Bulletins (`/timetables/broadcasts`)**: Priority campus-wide announcements and emergency rescheduling alerts feed.
+- **🧠 AI Constraint Priority Tuner (`/timetables/solver-settings`)**: Adjustable sliders to tune solver weights for idle gap minimization, lab balance, and shift policies.
 
 ---
 

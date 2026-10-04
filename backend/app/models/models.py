@@ -235,3 +235,30 @@ class Substitution(Base):
     timetable_detail = relationship("TimetableDetail")
 
 
+class Broadcast(Base):
+    __tablename__ = "broadcasts"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
+    message = Column(String(1000), nullable=False)
+    priority = Column(String(20), default="Normal")  # High, Normal, Urgent
+    target_role = Column(String(50), default="All")  # All, Staff, Student
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ExamSchedule(Base):
+    __tablename__ = "exam_schedules"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    exam_type = Column(String(50), nullable=False)  # Mid-Term, End-Semester
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    section_id = Column(Integer, ForeignKey("sections.id", ondelete="CASCADE"), nullable=False)
+    exam_date = Column(String(50), nullable=False)
+    session_time = Column(String(50), nullable=False)  # Morning (09:30 - 12:30), Afternoon (01:30 - 04:30)
+    classroom_id = Column(Integer, ForeignKey("classrooms.id", ondelete="SET NULL"), nullable=True)
+
+    subject = relationship("Subject")
+    section = relationship("Section")
+    classroom = relationship("Classroom")
+
+
