@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.future import select
+from sqlalchemy import text
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Any, Optional
@@ -8,11 +9,12 @@ import datetime
 from backend.app.core.database import get_db
 from backend.app.api.auth import get_current_user, get_current_admin, get_current_staff
 from backend.app.models.models import (
-    User, Timetable, TimetableDetail, Section, Subject, Staff, Classroom, TimeSlot, SectionSubject, Substitution
+    User, Timetable, TimetableDetail, Section, Subject, Staff, Classroom, TimeSlot, SectionSubject, Substitution, PreAllocatedSlot
 )
 from backend.app.schemas.schemas import (
     TimetableOut, TimetableGenerateRequest, ValidateOverrideRequest, ValidateOverrideResponse, ConflictDetail,
-    SubstitutionCreate, SubstitutionOut, LiveStatusResponse, ClassroomLiveStatus, FacultyLiveStatus, OngoingClassDetail
+    SubstitutionCreate, SubstitutionOut, LiveStatusResponse, ClassroomLiveStatus, FacultyLiveStatus, OngoingClassDetail,
+    PreAllocatedSlotCreate, PreAllocatedSlotOut, PublishToggleRequest, PublishStatusOut
 )
 from backend.app.core.solver import generate_timetable_csp
 
@@ -28,6 +30,329 @@ async def generate_timetable(
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["message"])
     return result
+
+@router.get("/public/staff")
+async def get_public_staff(db: AsyncSession = Depends(get_db)):
+    from backend.app.core.security import get_password_hash
+    result = await db.execute(select(Staff).options(selectinload(Staff.user)))
+    staff_list = result.scalars().all()
+    res = []
+    need_commit = False
+
+    for s in staff_list:
+        user = s.user
+        if not user:
+            target_email = getattr(s, 'email', None) or f"{s.name.lower().replace(' ', '').replace('.', '')}@college.edu"
+            u_res = await db.execute(select(User).where(User.email == target_email))
+            user = u_res.scalar_one_or_none()
+            if not user:
+                user = User(
+                    email=target_email,
+                    password_hash=get_password_hash("Staff123!"),
+                    role="Staff"
+                )
+                db.add(user)
+                await db.flush()
+            s.user_id = user.id
+            need_commit = True
+
+        res.append({
+            "id": s.id,
+            "name": s.name,
+            "email": user.email,
+            "password": "Staff123!"
+        })
+
+    if need_commit:
+        await db.commit()
+
+    return sorted(res, key=lambda x: x["name"])
+
+@router.get("/public/sections")
+async def get_public_sections(db: AsyncSession = Depends(get_db)):
+    from backend.app.core.security import get_password_hash
+    result = await db.execute(select(Section))
+    sections = result.scalars().all()
+    res = []
+    need_commit = False
+
+    for sec in sections:
+        sec_clean = sec.name.lower().replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        target_email = f"student.{sec_clean}@college.edu"
+        
+        u_res = await db.execute(select(User).where(User.email == target_email))
+        user = u_res.scalar_one_or_none()
+        if not user:
+            user = User(
+                email=target_email,
+                password_hash=get_password_hash("Student123!"),
+                role="Student"
+            )
+            db.add(user)
+            need_commit = True
+
+        res.append({
+            "id": sec.id,
+            "name": f"Class - {sec.name}",
+            "email": target_email,
+            "password": "Student123!"
+        })
+
+    if need_commit:
+        await db.commit()
+
+    return sorted(res, key=lambda x: x["name"])
+
+# Pre-Allocated Slots Endpoints
+@router.get("/pre-allocated-slots", response_model=List[PreAllocatedSlotOut])
+async def get_pre_allocated_slots(
+    section_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    query = select(PreAllocatedSlot)
+    if section_id:
+        query = query.where(PreAllocatedSlot.section_id == section_id)
+    res = await db.execute(query)
+    slots = res.scalars().all()
+
+    enriched = []
+    for ps in slots:
+        sec_res = await db.execute(select(Section).where(Section.id == ps.section_id))
+        sec = sec_res.scalar_one_or_none()
+
+        sub_res = await db.execute(select(Subject).where(Subject.id == ps.subject_id))
+        sub = sub_res.scalar_one_or_none()
+
+        staff_res = await db.execute(select(Staff).where(Staff.id == ps.staff_id))
+        stf = staff_res.scalar_one_or_none()
+
+        ts_res = await db.execute(select(TimeSlot).where(TimeSlot.id == ps.timeslot_id))
+        ts = ts_res.scalar_one_or_none()
+
+        cr_res = await db.execute(select(Classroom).where(Classroom.id == ps.classroom_id)) if ps.classroom_id else None
+        cr = cr_res.scalar_one_or_none() if cr_res else None
+
+        enriched.append({
+            "id": ps.id,
+            "section_id": ps.section_id,
+            "section_name": sec.name if sec else "Unknown",
+            "subject_id": ps.subject_id,
+            "subject_name": sub.name if sub else "Unknown",
+            "subject_code": sub.code if sub else "",
+            "staff_id": ps.staff_id,
+            "staff_name": stf.name if stf else "Unknown",
+            "timeslot_id": ps.timeslot_id,
+            "day_of_week": ts.day_of_week if ts else "",
+            "period_number": ts.period_number if ts else 0,
+            "classroom_id": ps.classroom_id,
+            "room_number": cr.room_number if cr else "Homeroom"
+        })
+    return enriched
+
+@router.post("/pre-allocated-slots", response_model=PreAllocatedSlotOut)
+async def create_pre_allocated_slot(
+    req: PreAllocatedSlotCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    # 1. Validate timeslot exists and is not Break
+    ts_check_res = await db.execute(select(TimeSlot).where(TimeSlot.id == req.timeslot_id))
+    ts_obj = ts_check_res.scalar_one_or_none()
+    if not ts_obj:
+        raise HTTPException(status_code=400, detail="Invalid timeslot selected.")
+    if ts_obj.slot_type == "Break":
+        raise HTTPException(status_code=400, detail=f"Cannot lock class during institutional break time ({ts_obj.day_of_week} Period {ts_obj.period_number}).")
+
+    # 2. Check if staff is already pre-allocated to teach another section at the same timeslot
+    staff_pre_res = await db.execute(
+        select(PreAllocatedSlot).where(
+            PreAllocatedSlot.staff_id == req.staff_id,
+            PreAllocatedSlot.timeslot_id == req.timeslot_id,
+            PreAllocatedSlot.section_id != req.section_id
+        )
+    )
+    other_staff_slot = staff_pre_res.scalar_one_or_none()
+    if other_staff_slot:
+        other_sec = (await db.execute(select(Section).where(Section.id == other_staff_slot.section_id))).scalar_one_or_none()
+        stf_obj = (await db.execute(select(Staff).where(Staff.id == req.staff_id))).scalar_one_or_none()
+        stf_name = stf_obj.name if stf_obj else "Selected faculty member"
+        sec_name = other_sec.name if other_sec else "another section"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Faculty Overlap Conflict: {stf_name} is already locked to teach {sec_name} on {ts_obj.day_of_week} Period {ts_obj.period_number}."
+        )
+
+    # 3. Check if room is already pre-allocated to another section at the same timeslot
+    if req.classroom_id:
+        room_pre_res = await db.execute(
+            select(PreAllocatedSlot).where(
+                PreAllocatedSlot.classroom_id == req.classroom_id,
+                PreAllocatedSlot.timeslot_id == req.timeslot_id,
+                PreAllocatedSlot.section_id != req.section_id
+            )
+        )
+        other_room_slot = room_pre_res.scalar_one_or_none()
+        if other_room_slot:
+            other_sec = (await db.execute(select(Section).where(Section.id == other_room_slot.section_id))).scalar_one_or_none()
+            cr_obj = (await db.execute(select(Classroom).where(Classroom.id == req.classroom_id))).scalar_one_or_none()
+            room_num = cr_obj.room_number if cr_obj else "Selected classroom"
+            sec_name = other_sec.name if other_sec else "another section"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Room Contention Conflict: Classroom {room_num} is already locked for {sec_name} on {ts_obj.day_of_week} Period {ts_obj.period_number}."
+            )
+
+    # Check if a pre-allocated slot already exists for this section and timeslot
+    existing_res = await db.execute(
+        select(PreAllocatedSlot).where(
+            PreAllocatedSlot.section_id == req.section_id,
+            PreAllocatedSlot.timeslot_id == req.timeslot_id
+        )
+    )
+    existing = existing_res.scalar_one_or_none()
+    if existing:
+        existing.subject_id = req.subject_id
+        existing.staff_id = req.staff_id
+        existing.classroom_id = req.classroom_id
+        ps = existing
+    else:
+        ps = PreAllocatedSlot(
+            section_id=req.section_id,
+            subject_id=req.subject_id,
+            staff_id=req.staff_id,
+            timeslot_id=req.timeslot_id,
+            classroom_id=req.classroom_id
+        )
+        db.add(ps)
+    
+    # Ensure SectionSubject mapping exists so solver recognizes assignment
+    sec_sub_res = await db.execute(
+        select(SectionSubject).where(
+            SectionSubject.section_id == req.section_id,
+            SectionSubject.subject_id == req.subject_id
+        )
+    )
+    sec_sub = sec_sub_res.scalar_one_or_none()
+    if not sec_sub:
+        db.add(SectionSubject(
+            section_id=req.section_id,
+            subject_id=req.subject_id,
+            assigned_staff_id=req.staff_id
+        ))
+    else:
+        sec_sub.assigned_staff_id = req.staff_id
+
+    await db.commit()
+    await db.refresh(ps)
+
+    sec_res = await db.execute(select(Section).where(Section.id == ps.section_id))
+    sec = sec_res.scalar_one_or_none()
+    sub_res = await db.execute(select(Subject).where(Subject.id == ps.subject_id))
+    sub = sub_res.scalar_one_or_none()
+    staff_res = await db.execute(select(Staff).where(Staff.id == ps.staff_id))
+    stf = staff_res.scalar_one_or_none()
+    ts_res = await db.execute(select(TimeSlot).where(TimeSlot.id == ps.timeslot_id))
+    ts = ts_res.scalar_one_or_none()
+    cr_res = await db.execute(select(Classroom).where(Classroom.id == ps.classroom_id)) if ps.classroom_id else None
+    cr = cr_res.scalar_one_or_none() if cr_res else None
+
+    return {
+        "id": ps.id,
+        "section_id": ps.section_id,
+        "section_name": sec.name if sec else "Unknown",
+        "subject_id": ps.subject_id,
+        "subject_name": sub.name if sub else "Unknown",
+        "subject_code": sub.code if sub else "",
+        "staff_id": ps.staff_id,
+        "staff_name": stf.name if stf else "Unknown",
+        "timeslot_id": ps.timeslot_id,
+        "day_of_week": ts.day_of_week if ts else "",
+        "period_number": ts.period_number if ts else 0,
+        "classroom_id": ps.classroom_id,
+        "room_number": cr.room_number if cr else "Homeroom"
+    }
+
+@router.delete("/pre-allocated-slots/{slot_id}")
+async def delete_pre_allocated_slot(
+    slot_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(PreAllocatedSlot).where(PreAllocatedSlot.id == slot_id))
+    slot = res.scalar_one_or_none()
+    if not slot:
+        raise HTTPException(status_code=404, detail="Pre-allocated slot not found")
+
+    # Cascade delete any TimetableDetail generated from this pre-allocated slot
+    detail_res = await db.execute(
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .where(
+            Timetable.section_id == slot.section_id,
+            TimetableDetail.timeslot_id == slot.timeslot_id,
+            TimetableDetail.is_manual == True
+        )
+    )
+    for d in detail_res.scalars().all():
+        await db.delete(d)
+
+    await db.delete(slot)
+    await db.commit()
+    return {"message": "Pre-allocated slot deleted successfully"}
+
+@router.delete("/pre-allocated-slots-clear-all")
+async def clear_all_pre_allocated_slots(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    # Cascade delete all manual TimetableDetail entries
+    detail_res = await db.execute(
+        select(TimetableDetail).where(TimetableDetail.is_manual == True)
+    )
+    for d in detail_res.scalars().all():
+        await db.delete(d)
+
+    await db.execute(text("DELETE FROM pre_allocated_slots"))
+    await db.commit()
+    return {"message": "All pre-allocated slots cleared successfully"}
+
+# Timetable Publication Toggle Endpoints
+@router.post("/publish")
+async def toggle_timetable_publish(
+    req: PublishToggleRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    query = select(Timetable).where(Timetable.is_active == True)
+    if req.semester is not None:
+        query = query.where(Timetable.semester == req.semester)
+    res = await db.execute(query)
+    timetables = res.scalars().all()
+    for t in timetables:
+        t.is_published = req.is_published
+    await db.commit()
+    return {
+        "success": True,
+        "message": f"Updated publish status to {req.is_published} for {len(timetables)} timetables.",
+        "is_published": req.is_published,
+        "count": len(timetables)
+    }
+
+@router.get("/publish-status", response_model=PublishStatusOut)
+async def get_publish_status(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    res = await db.execute(select(Timetable).where(Timetable.is_active == True))
+    timetables = res.scalars().all()
+    total = len(timetables)
+    published = sum(1 for t in timetables if getattr(t, 'is_published', False))
+    return {
+        "is_published": published > 0 and published == total,
+        "published_count": published,
+        "total_count": total
+    }
 
 @router.get("/section/{section_id}", response_model=TimetableOut)
 async def get_section_timetable(
@@ -48,6 +373,19 @@ async def get_section_timetable(
     
     if not timetable:
         raise HTTPException(status_code=404, detail="Timetable not found for this section.")
+
+    # Check publish status for non-admin users
+    if current_user.role != "Admin" and not getattr(timetable, 'is_published', False):
+        return {
+            "id": timetable.id,
+            "section_id": timetable.section_id,
+            "academic_year": timetable.academic_year,
+            "semester": timetable.semester,
+            "is_active": timetable.is_active,
+            "is_published": False,
+            "version": timetable.version,
+            "details": []
+        }
 
     # Fetch substitutions if date is provided
     substitutions_map = {}
@@ -100,7 +438,8 @@ async def get_section_timetable(
             "staff_name": current_staff_name,
             "room_number": classroom.room_number if classroom else "Online",
             "is_substituted": is_sub,
-            "original_staff_name": orig_name
+            "original_staff_name": orig_name,
+            "is_manual": getattr(detail, 'is_manual', False)
         })
 
     return {
@@ -109,6 +448,7 @@ async def get_section_timetable(
         "academic_year": timetable.academic_year,
         "semester": timetable.semester,
         "is_active": timetable.is_active,
+        "is_published": getattr(timetable, 'is_published', False),
         "version": timetable.version,
         "details": enriched_details
     }
@@ -128,14 +468,16 @@ async def get_staff_timetable(
     details = result.scalars().all()
 
     enriched_details = []
+    seen_slots = set()
+
     for d in details:
         # Check if the parent timetable is active
         if not d.timetable.is_active:
             continue
-            
+
         sub_res = await db.execute(select(Subject).where(Subject.id == d.subject_id))
         subject = sub_res.scalar_one_or_none()
-        
+
         sec_res = await db.execute(select(Section).where(Section.id == d.timetable.section_id))
         section = sec_res.scalar_one_or_none()
 
@@ -145,6 +487,8 @@ async def get_staff_timetable(
         timeslot_res = await db.execute(select(TimeSlot).where(TimeSlot.id == d.timeslot_id))
         timeslot = timeslot_res.scalar_one_or_none()
 
+        seen_slots.add((d.timetable.section_id, d.timeslot_id))
+
         enriched_details.append({
             "id": d.id,
             "timeslot_id": d.timeslot_id,
@@ -153,7 +497,38 @@ async def get_staff_timetable(
             "section_name": section.name if section else "Unknown",
             "subject_name": subject.name if subject else "Unknown",
             "subject_code": subject.code if subject else "",
-            "room_number": classroom.room_number if classroom else "Online"
+            "room_number": classroom.room_number if classroom else "Online",
+            "is_manual": getattr(d, 'is_manual', False)
+        })
+
+    # Include any PreAllocatedSlot assigned to this staff member (if not already captured)
+    pre_res = await db.execute(select(PreAllocatedSlot).where(PreAllocatedSlot.staff_id == staff_id))
+    for ps in pre_res.scalars().all():
+        if (ps.section_id, ps.timeslot_id) in seen_slots:
+            continue
+
+        sub_res = await db.execute(select(Subject).where(Subject.id == ps.subject_id))
+        subject = sub_res.scalar_one_or_none()
+
+        sec_res = await db.execute(select(Section).where(Section.id == ps.section_id))
+        section = sec_res.scalar_one_or_none()
+
+        room_res = await db.execute(select(Classroom).where(Classroom.id == ps.classroom_id)) if ps.classroom_id else None
+        classroom = room_res.scalar_one_or_none() if room_res else None
+
+        timeslot_res = await db.execute(select(TimeSlot).where(TimeSlot.id == ps.timeslot_id))
+        timeslot = timeslot_res.scalar_one_or_none()
+
+        enriched_details.append({
+            "id": f"pre_{ps.id}",
+            "timeslot_id": ps.timeslot_id,
+            "day_of_week": timeslot.day_of_week if timeslot else "",
+            "period_number": timeslot.period_number if timeslot else 0,
+            "section_name": section.name if section else "Unknown",
+            "subject_name": subject.name if subject else "Unknown",
+            "subject_code": subject.code if subject else "",
+            "room_number": classroom.room_number if classroom else "Online",
+            "is_manual": True
         })
 
     return enriched_details
@@ -465,6 +840,7 @@ async def wipe_timetables(
         # Only clear solved timetables, solved details, and substitutions
         # This keeps registry tables (staff, subjects, sections, classrooms, timeslots) intact
         tables_to_clear = [
+            "pre_allocated_slots",
             "substitutions",
             "timetable_details",
             "timetables"
@@ -503,6 +879,13 @@ async def get_staff_load_analytics(
     from backend.app.models.models import Classroom, Staff
     from sqlalchemy import func
 
+    subq = (
+        select(func.max(Timetable.id))
+        .where(Timetable.is_active == True)
+        .group_by(Timetable.section_id)
+        .scalar_subquery()
+    )
+
     # Get all active timetable details grouped by staff
     stmt = (
         select(
@@ -514,7 +897,7 @@ async def get_staff_load_analytics(
         .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
         .join(Staff, TimetableDetail.staff_id == Staff.id)
         .join(TimeSlot, TimetableDetail.timeslot_id == TimeSlot.id)
-        .where(Timetable.is_active == True, TimeSlot.slot_type != "Break")
+        .where(Timetable.id.in_(subq), Timetable.is_active == True, TimeSlot.slot_type != "Break")
         .group_by(TimetableDetail.staff_id, Staff.name, TimeSlot.day_of_week)
         .order_by(Staff.name)
     )

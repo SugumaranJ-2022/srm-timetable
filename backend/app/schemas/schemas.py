@@ -86,6 +86,15 @@ class StaffCreate(BaseModel):
     profile_photo_url: Optional[str] = None
     subject_ids: List[int] = []
 
+class StaffUpdate(BaseModel):
+    name: str
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    phone: Optional[str] = None
+    status: Optional[str] = "Active"
+    profile_photo_url: Optional[str] = None
+    subject_ids: Optional[List[int]] = []
+
 class StudentCreate(BaseModel):
     email: EmailStr
     password: str
@@ -173,16 +182,51 @@ class TimetableDetailOut(BaseModel):
     room_number: Optional[str] = None
     is_substituted: Optional[bool] = False
     original_staff_name: Optional[str] = None
+    is_manual: Optional[bool] = False
     
     model_config = ConfigDict(from_attributes=True)
 
 class TimetableOut(TimetableBase):
     id: int
     is_active: bool
+    is_published: bool = False
     version: int
     details: List[TimetableDetailOut]
     
     model_config = ConfigDict(from_attributes=True)
+
+class PreAllocatedSlotCreate(BaseModel):
+    section_id: int
+    subject_id: int
+    staff_id: int
+    timeslot_id: int
+    classroom_id: Optional[int] = None
+
+class PreAllocatedSlotOut(BaseModel):
+    id: int
+    section_id: int
+    section_name: Optional[str] = None
+    subject_id: int
+    subject_name: Optional[str] = None
+    subject_code: Optional[str] = None
+    staff_id: int
+    staff_name: Optional[str] = None
+    timeslot_id: int
+    day_of_week: Optional[str] = None
+    period_number: Optional[int] = None
+    classroom_id: Optional[int] = None
+    room_number: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PublishToggleRequest(BaseModel):
+    semester: Optional[int] = None
+    is_published: bool
+
+class PublishStatusOut(BaseModel):
+    is_published: bool
+    published_count: int
+    total_count: int
 
 class TimetableGenerateRequest(BaseModel):
     academic_year: str

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.models import (
     Section, Subject, Staff, Classroom, TimeSlot,
-    SectionSubject, Timetable, TimetableDetail
+    SectionSubject, Timetable, TimetableDetail, PreAllocatedSlot
 )
 
 logger = logging.getLogger(__name__)
@@ -151,6 +151,12 @@ async def generate_timetable_csp(
         if z_vars and unique_rooms:
             model.Add(sum(z_vars) <= 1)
 
+    # Fetch Pre-Allocated Locked UG Slots
+    res_pre = await db.execute(
+        select(PreAllocatedSlot).where(PreAllocatedSlot.section_id.in_(section_ids))
+    )
+    pre_allocated_slots = res_pre.scalars().all()
+
     # 3. Link Timeslot Room Assignment (Y) to Homeroom (Z) / Lab Classrooms depending on slot type (Theory vs Lab)
     for s in sections:
         if s.program in ["MCA", "MCA_GENAI", "MSC"]:
@@ -165,14 +171,23 @@ async def generate_timetable_csp(
         ss_list = sec_sub_map[s.id]
         
         for t in active_slots:
+            # Check if there is a pre-allocated room override for this section & timeslot
+            pre_room_id = next((ps.classroom_id for ps in pre_allocated_slots if ps.section_id == s.id and ps.timeslot_id == t.id and ps.classroom_id is not None), None)
+
             for ss in ss_list:
                 x_theory_var = X_theory[(s.id, t.id, ss.subject_id)]
                 x_lab_var = X_lab[(s.id, t.id, ss.subject_id)]
                 
-                # If theory is scheduled, the section must be in its homeroom Z
+                # If theory is scheduled, the section must be in its assigned room (homeroom Z or pre-allocated classroom)
                 for r in classrooms:
-                    if (s.id, t.id, r.id) in Y and (s.id, r.id) in Z:
-                        model.Add(Y[(s.id, t.id, r.id)] == Z[(s.id, r.id)]).OnlyEnforceIf(x_theory_var)
+                    if (s.id, t.id, r.id) in Y:
+                        if pre_room_id is not None:
+                            if r.id == pre_room_id:
+                                model.Add(Y[(s.id, t.id, r.id)] == 1).OnlyEnforceIf(x_theory_var)
+                            else:
+                                model.Add(Y[(s.id, t.id, r.id)] == 0).OnlyEnforceIf(x_theory_var)
+                        elif (s.id, r.id) in Z:
+                            model.Add(Y[(s.id, t.id, r.id)] == Z[(s.id, r.id)]).OnlyEnforceIf(x_theory_var)
                 
                 # If lab is scheduled, the section must be in one of its program's lab rooms
                 # For non-lab rooms, Y must be 0
@@ -185,6 +200,14 @@ async def generate_timetable_csp(
                 lab_y_vars = [Y[(s.id, t.id, r_id)] for r_id in s_lab_room_ids if (s.id, t.id, r_id) in Y]
                 if lab_y_vars:
                     model.Add(sum(lab_y_vars) == 1).OnlyEnforceIf(x_lab_var)
+
+    pre_slot_keys = set()
+    for ps in pre_allocated_slots:
+        pre_slot_keys.add((ps.section_id, ps.timeslot_id))
+        if (ps.section_id, ps.timeslot_id, ps.subject_id) in X:
+            model.Add(X[(ps.section_id, ps.timeslot_id, ps.subject_id)] == 1)
+            if ps.classroom_id and (ps.section_id, ps.timeslot_id, ps.classroom_id) in Y:
+                model.Add(Y[(ps.section_id, ps.timeslot_id, ps.classroom_id)] == 1)
 
     # Constraint 1 & 2: Section Overlap, Break Integrity, and Zero Free-Period (Rule 7)
     # For each section and timeslot, exactly 1 subject is scheduled if zero-free-period is enabled.
@@ -201,11 +224,19 @@ async def generate_timetable_csp(
 
     # Constraint 3: Staff Overlap
     # A staff member cannot teach more than 1 section at the same timeslot
+    pre_staff_map = {
+        (ps.section_id, ps.timeslot_id): ps.staff_id 
+        for ps in pre_allocated_slots if ps.staff_id is not None
+    }
     staff_timeslot_vars = defaultdict(list)
     for (s_id, t_id, sub_id), var in X.items():
-        ss = next((x for x in section_subjects if x.section_id == s_id and x.subject_id == sub_id), None)
-        if ss:
-            staff_timeslot_vars[(ss.assigned_staff_id, t_id)].append(var)
+        stf_id = pre_staff_map.get((s_id, t_id))
+        if not stf_id:
+            ss = next((x for x in section_subjects if x.section_id == s_id and x.subject_id == sub_id), None)
+            if ss:
+                stf_id = ss.assigned_staff_id
+        if stf_id:
+            staff_timeslot_vars[(stf_id, t_id)].append(var)
 
     for (staff_id, t_id) in sorted(staff_timeslot_vars.keys()):
         vars_list = staff_timeslot_vars[(staff_id, t_id)]
@@ -232,24 +263,87 @@ async def generate_timetable_csp(
             model.Add(sum(y_vars) == sum(x_vars))
 
     # Constraint 8: Credit Hours Target
-    # For each section and subject, schedule exactly 3 theory credits and 2 lab credits (or 3/0 for project)
+    # For each section and subject, schedule target theory and lab credits respecting pre-allocated slots & zero-free-period policy
+    targets_per_section = {}
     for s in sections:
         ss_list = sec_sub_map[s.id]
+        sec_pre_slots = [ps for ps in pre_allocated_slots if ps.section_id == s.id]
+        num_sec_pre = len(sec_pre_slots)
+        free_slots_remaining = max(0, 25 - num_sec_pre)
+
+        # Separate pre-allocated subjects from regular non-preallocated subjects
+        pre_sub_ids = {ps.subject_id for ps in sec_pre_slots}
+        regular_ss_list = [ss for ss in ss_list if ss.subject_id not in pre_sub_ids]
+        
+        total_reg_credits = sum(subjects_dict[ss.subject_id].credits for ss in regular_ss_list if ss.subject_id in subjects_dict)
+
+        targets = {}
+        if s.enable_zero_free_periods and regular_ss_list and free_slots_remaining > 0:
+            configured_project_days = [d.strip() for d in s.project_days.split(",") if d.strip()]
+            max_proj_periods = len(configured_project_days) if s.enable_project_cadence else 5
+
+            proj_ss_list = [ss for ss in regular_ss_list if subjects_dict[ss.subject_id].is_project]
+            non_proj_ss_list = [ss for ss in regular_ss_list if not subjects_dict[ss.subject_id].is_project]
+
+            allocated = 0
+            for ss in proj_ss_list:
+                sub = subjects_dict.get(ss.subject_id)
+                if sub:
+                    tgt = min(sub.credits, max_proj_periods)
+                    targets[ss.subject_id] = tgt
+                    allocated += tgt
+
+            rem_slots = max(0, free_slots_remaining - allocated)
+            total_non_proj_credits = sum(subjects_dict[ss.subject_id].credits for ss in non_proj_ss_list if ss.subject_id in subjects_dict)
+
+            if non_proj_ss_list and rem_slots > 0:
+                allocated_non_proj = 0
+                for idx, ss in enumerate(non_proj_ss_list):
+                    sub = subjects_dict.get(ss.subject_id)
+                    if not sub:
+                        continue
+                    if idx == len(non_proj_ss_list) - 1:
+                        tgt = max(1, rem_slots - allocated_non_proj)
+                    else:
+                        prop = sub.credits / total_non_proj_credits if total_non_proj_credits > 0 else 1.0 / len(non_proj_ss_list)
+                        tgt = max(1, int(round(prop * rem_slots)))
+                        allocated_non_proj += tgt
+                    targets[ss.subject_id] = tgt
+        else:
+            for ss in regular_ss_list:
+                sub = subjects_dict.get(ss.subject_id)
+                if sub:
+                    if sub.is_project:
+                        configured_project_days = [d.strip() for d in s.project_days.split(",") if d.strip()]
+                        max_proj_periods = len(configured_project_days) if s.enable_project_cadence else 5
+                        targets[ss.subject_id] = min(sub.credits, max_proj_periods)
+                    else:
+                        targets[ss.subject_id] = sub.credits
+
+        targets_per_section[s.id] = targets
+
         for ss in ss_list:
-            sub = subjects_dict[ss.subject_id]
+            sub = subjects_dict.get(ss.subject_id)
+            if not sub:
+                continue
             possible_slots = [t for t in timeslots if t.slot_type != "Break"]
             theory_vars = [X_theory[(s.id, t.id, ss.subject_id)] for t in possible_slots if (s.id, t.id, ss.subject_id) in X_theory]
             lab_vars = [X_lab[(s.id, t.id, ss.subject_id)] for t in possible_slots if (s.id, t.id, ss.subject_id) in X_lab]
             
-            if sub.is_project:
-                model.Add(sum(theory_vars) == 3)
-                model.Add(sum(lab_vars) == 0)
-            elif sub.credits == 2:
-                model.Add(sum(theory_vars) == 2)
-                model.Add(sum(lab_vars) == 0)
+            num_pre = sum(1 for ps in sec_pre_slots if ps.subject_id == ss.subject_id)
+            
+            if num_pre > 0:
+                model.Add(sum(theory_vars) + sum(lab_vars) == num_pre)
             else:
-                model.Add(sum(theory_vars) == 3)
-                model.Add(sum(lab_vars) == 2)
+                target_periods = targets.get(ss.subject_id, sub.credits)
+                if sub.is_project:
+                    model.Add(sum(theory_vars) == target_periods)
+                    model.Add(sum(lab_vars) == 0)
+                elif sub.credits <= 4:
+                    model.Add(sum(theory_vars) == target_periods)
+                    model.Add(sum(lab_vars) == 0)
+                else:
+                    model.Add(sum(theory_vars) + sum(lab_vars) == target_periods)
 
     # Group timeslots by day for daily constraints
     day_groups = defaultdict(list)
@@ -260,22 +354,36 @@ async def generate_timetable_csp(
     # Constraint 9: Daily Coverage Rule (Rule 8) & At most once per day
     for s in sections:
         ss_list = sec_sub_map[s.id]
+        targets = targets_per_section.get(s.id, {})
+        configured_project_days = [d.strip() for d in s.project_days.split(",") if d.strip()]
+        sec_pre_slots = [ps for ps in pre_allocated_slots if ps.section_id == s.id]
+
         for day in sorted(day_groups.keys()):
             slots = day_groups[day]
+            slot_ids = {t.id for t in slots}
+            num_pre_on_day = sum(1 for ps in sec_pre_slots if ps.timeslot_id in slot_ids)
+            has_project = s.enable_project_cadence and (day in configured_project_days)
+            avail_for_regular = 5 - num_pre_on_day - (1 if has_project else 0)
+
+            heavy_subs = [ss for ss in ss_list if not subjects_dict[ss.subject_id].is_project and targets.get(ss.subject_id, subjects_dict[ss.subject_id].credits) >= 5]
+            can_require_daily_coverage = len(heavy_subs) <= avail_for_regular
+
             for ss in ss_list:
                 sub = subjects_dict[ss.subject_id]
                 day_sub_vars = [X[(s.id, t.id, ss.subject_id)] for t in slots if (s.id, t.id, ss.subject_id) in X]
                 if not day_sub_vars:
                     continue
 
-                if not sub.is_project and sub.credits >= 5:
-                    if s.enable_daily_coverage:
-                        # Rule 8: Every non-project subject must appear at least once every day
+                tgt_p = targets.get(ss.subject_id, sub.credits)
+                if not sub.is_project and tgt_p >= 5:
+                    if s.enable_daily_coverage and can_require_daily_coverage:
+                        # Rule 8: Subjects with 5+ periods appear at least once every day
                         model.Add(sum(day_sub_vars) >= 1)
                     else:
-                        # Fallback: At most once per day if credits <= 5 days
-                        if sub.credits <= len(day_groups):
-                            model.AddAtMostOne(day_sub_vars)
+                        model.AddAtMostOne(day_sub_vars)
+                elif not sub.is_project:
+                    if tgt_p <= len(day_groups):
+                        model.AddAtMostOne(day_sub_vars)
 
     # Constraint 10: Project Cadence Rule (Rule 9)
     # The "Project" subject must be scheduled on exactly the configured weekdays, one period per scheduled day.
@@ -294,10 +402,10 @@ async def generate_timetable_csp(
 
             if s.enable_project_cadence:
                 if day in configured_project_days:
-                    # Exactly 1 period of Project on this day
-                    model.Add(sum(project_vars_on_day) == 1)
+                    # At most 1 period of Project on configured project days
+                    model.Add(sum(project_vars_on_day) <= 1)
                 else:
-                    # 0 periods of Project on this day
+                    # 0 periods of Project on non-project days
                     model.Add(sum(project_vars_on_day) == 0)
 
     # 4. Soft Constraints (Optimization Objectives)
@@ -387,25 +495,33 @@ async def generate_timetable_csp(
 
     # 5. Run Solver - Configured with safe thread count to prevent cloud resource throttling and memory OOM
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 25.0
+    solver.parameters.max_time_in_seconds = 60.0
     
-    # Restrict to at most 2 workers to avoid CPU/memory starvation on cloud servers
+    # Restrict to at most 4 workers to speed up multi-section solving
     import os
     cpu_count = os.cpu_count() or 1
-    solver.parameters.num_search_workers = min(2, cpu_count)
+    solver.parameters.num_search_workers = min(4, cpu_count)
     
     solver.parameters.interleave_search = True
-    solver.parameters.random_seed = 42
-    status = solver.Solve(model, StopAfterFirstSolution())
+    status = solver.Solve(model)
+    print("SOLVER STATUS NAME:", solver.StatusName(status))
 
-    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+    has_solution = status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
+    if not has_solution and status == cp_model.UNKNOWN:
+        try:
+            if X:
+                sample_var = next(iter(X.values()))
+                _ = solver.Value(sample_var)
+                has_solution = True
+        except Exception:
+            has_solution = False
+
+    if has_solution:
         # Save generated timetable
         for s in sections:
             existing_timetables_res = await db.execute(
                 select(Timetable).where(
-                    Timetable.section_id == s.id,
-                    Timetable.academic_year == academic_year,
-                    Timetable.semester == semester
+                    Timetable.section_id == s.id
                 )
             )
             for et in existing_timetables_res.scalars().all():
@@ -420,6 +536,7 @@ async def generate_timetable_csp(
                 academic_year=academic_year,
                 semester=semester,
                 is_active=True,
+                is_published=True,
                 version=1
             )
             db.add(timetable)
@@ -445,13 +562,17 @@ async def generate_timetable_csp(
                                 break
 
                     ss = next(x for x in ss_list if x.subject_id == scheduled_sub_id)
+                    is_man = (s.id, t.id) in pre_slot_keys
+                    pre_stf = next((ps.staff_id for ps in pre_allocated_slots if ps.section_id == s.id and ps.timeslot_id == t.id and ps.staff_id is not None), None)
+                    eff_staff_id = pre_stf if pre_stf is not None else ss.assigned_staff_id
                     
                     detail = TimetableDetail(
                         timetable_id=timetable.id,
                         timeslot_id=t.id,
                         subject_id=scheduled_sub_id,
-                        staff_id=ss.assigned_staff_id,
-                        classroom_id=assigned_room_id
+                        staff_id=eff_staff_id,
+                        classroom_id=assigned_room_id,
+                        is_manual=is_man
                     )
                     db.add(detail)
 
@@ -531,7 +652,40 @@ async def generate_timetable_csp(
             "metrics": metrics
         }
     else:
+        # Run diagnostic analysis to pinpoint why model is infeasible
+        reasons = []
+        
+        # Check 1: Staff Overlap among pre-allocated slots
+        res_pre_all = await db.execute(select(PreAllocatedSlot))
+        all_pre_slots = res_pre_all.scalars().all()
+        staff_slot_map = defaultdict(list)
+        for ps in all_pre_slots:
+            staff_slot_map[(ps.staff_id, ps.timeslot_id)].append(ps)
+        
+        for (stf_id, ts_id), ps_list in staff_slot_map.items():
+            if len(ps_list) > 1:
+                stf = (await db.execute(select(Staff).where(Staff.id == stf_id))).scalar_one_or_none()
+                ts = (await db.execute(select(TimeSlot).where(TimeSlot.id == ts_id))).scalar_one_or_none()
+                sec_names = []
+                for p in ps_list:
+                    s_obj = (await db.execute(select(Section).where(Section.id == p.section_id))).scalar_one_or_none()
+                    if s_obj: sec_names.append(s_obj.name)
+                stf_name = stf.name if stf else f"Staff ID {stf_id}"
+                ts_info = f"{ts.day_of_week} Period {ts.period_number}" if ts else f"Slot ID {ts_id}"
+                reasons.append(f"Faculty Overlap: {stf_name} is locked to multiple classes ({', '.join(sec_names)}) during {ts_info}.")
+
+        # Check 2: Total required pre-allocated locked slots vs available active slots (25 active slots)
+        for s in sections:
+            num_pre = len([ps for ps in all_pre_slots if ps.section_id == s.id])
+            if num_pre > 25:
+                reasons.append(f"Pre-Allocation Overload: Section {s.name} has {num_pre} locked pre-allocated slots, which exceeds the total weekly limit of 25 periods.")
+
+        if reasons:
+            diagnostic_msg = "Solver infeasible due to setup conflicts: " + " | ".join(reasons)
+        else:
+            diagnostic_msg = "Solver failed to find a feasible solution. Please check for staff overlap, lab room capacity, or conflicting pre-allocated UG slots."
+
         return {
             "success": False,
-            "message": "Solver failed to find a feasible solution. Check for resource constraints (e.g. not enough classrooms or staff overlap conflict)."
+            "message": diagnostic_msg
         }

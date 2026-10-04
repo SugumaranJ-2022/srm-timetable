@@ -27,7 +27,8 @@ import {
   Search,
   X,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from 'lucide-react';
 
 // ================= Helpers =================
@@ -120,6 +121,7 @@ const Dashboard = ({ setActiveTab }) => {
   const [isHoliday, setIsHoliday] = useState(false);
   const [holidayTitle, setHolidayTitle] = useState('');
   const [staffLoadData, setStaffLoadData] = useState([]);
+  const [isPublished, setIsPublished] = useState(true);
 
   // Detailed lists for click-to-view feature
   const [staffList, setStaffList]           = useState([]);
@@ -140,10 +142,14 @@ const Dashboard = ({ setActiveTab }) => {
       const dateParam = new Date().toLocaleDateString('sv-SE');
       const timeParam = new Date().toTimeString().split(' ')[0];
 
-      // Fetch live status to check for holidays
-      const liveStatus = await timetableApi.getLiveStatus(dateParam, timeParam);
+      // Fetch live status & publish status
+      const [liveStatus, pubStat] = await Promise.all([
+        timetableApi.getLiveStatus(dateParam, timeParam),
+        timetableApi.getPublishStatus()
+      ]);
       setIsHoliday(liveStatus.is_holiday);
       setHolidayTitle(liveStatus.holiday_title || '');
+      setIsPublished(pubStat.is_published);
 
       if (user.role === 'Admin') {
         const [staff, students, rooms, subs, secs] = await Promise.all([
@@ -283,6 +289,26 @@ const Dashboard = ({ setActiveTab }) => {
           </div>
         </div>
       </div>
+
+      {/* Draft Mode Notice Banner for non-admin logins when timetable is being prepared */}
+      {!isPublished && user.role !== 'Admin' && (
+        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-4 text-amber-800 dark:text-amber-200 animate-fade-in shadow-sm">
+          <div className="p-3 bg-amber-500/20 rounded-2xl shrink-0">
+            <Lock className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h4 className="text-base font-extrabold flex items-center gap-2">
+              Timetable Preparation in Progress by Admin
+              <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-extrabold bg-amber-500/20 border border-amber-500/30">
+                Draft Mode
+              </span>
+            </h4>
+            <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 leading-relaxed">
+              The Admin is currently pre-allocating fixed UG subjects (Tamil, English, Maths, etc.) and auto-generating schedules for all classes. Your official timetable will be unlocked and visible here as soon as the Admin completes publication.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Substitution alerts for students/staff */}
       {user.role === 'Student' && mySection && substitutions.filter(sub => sub.section_name === mySection.name).map(sub => (
@@ -428,217 +454,147 @@ const Dashboard = ({ setActiveTab }) => {
             </div>
           )}
 
-          {/* ================= System Status + Quick Actions ================= */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* System Status */}
-            <div className="lg:col-span-2 glass-card p-6 rounded-3xl">
-              <div className="flex items-center gap-2 mb-5">
-                <Shield className="w-4 h-4 text-brand-500" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">System Status</h3>
-                <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-green-600 dark:text-green-400">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> All Systems Operational
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { icon: CheckCircle, label: 'Database Connected', sub: 'SQLite + SQLAlchemy async', color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/15' },
-                  { icon: Zap, label: 'CP-SAT Solver Active', sub: 'Google OR-Tools - Running', color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/15' },
-                  { icon: CheckCircle, label: 'Zero Free-Period Policy', sub: 'All 25 periods occupied', color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/15' },
-                  { icon: FlaskConical, label: 'Lab / Theory Routing', sub: 'Room segregation enforced', color: 'text-teal-500', bg: 'bg-teal-500/10 border-teal-500/15' },
-                ].map((item, i) => (
-                  <div key={i} className={`flex items-start gap-3 p-4 rounded-2xl border ${item.bg}`}>
-                    <item.icon className={`w-5 h-5 mt-0.5 shrink-0 ${item.color}`} />
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.label}</p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{item.sub}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="glass-card p-6 rounded-3xl flex flex-col gap-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Zap className="w-4 h-4 text-brand-500" />
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">Quick Actions</h3>
-              </div>
-              {[
-                { label: 'Timetable Editor', sub: 'Load & edit section schedules', icon: CalendarRange, tab: 'editor', from: 'from-brand-600', to: 'to-brand-500' },
-                { label: 'Resource Registry', sub: 'Manage staff, rooms, subjects', icon: Users, tab: 'crud', from: 'from-indigo-600', to: 'to-purple-500' },
-                { label: 'Reports & Export', sub: 'Print or export PDF timetables', icon: BookOpen, tab: 'reports', from: 'from-green-600', to: 'to-emerald-500' },
-              ].map(action => (
-                <button
-                  key={action.tab}
-                  onClick={() => setActiveTab && setActiveTab(action.tab)}
-                  className={`w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r ${action.from} ${action.to} text-white group hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-md`}
-                >
-                  <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                    <action.icon className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-xs font-bold">{action.label}</p>
-                    <p className="text-[10px] text-white/70">{action.sub}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/60 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ))}
-            </div>
-          </div>
         </>
       ) : (
         // ================= Staff / Student Personal View =================
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          <div className="lg:col-span-2 glass-card p-6 md:p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-brand-500/20 shadow-glass">
-            <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl" />
-            <div className="flex items-center gap-3 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-widest">
-              <Clock className="w-4 h-4" />
-              {isHoliday ? 'HOLIDAY STATUS' : (activeSession?.status === 'ACTIVE_CLASS' ? 'ACTIVE CLASS SESSION' : 'CLASS SESSION STATUS')}
-            </div>
-            {isHoliday ? (
-              <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto text-2xl animate-bounce">
-                  🌴
+        (() => {
+          const hasRightSideContent = (nextSession && !isHoliday) || user.role === 'Staff';
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+              <div className={`${hasRightSideContent ? 'lg:col-span-2' : 'lg:col-span-3'} glass-card p-6 md:p-8 rounded-3xl relative overflow-hidden border border-slate-200 dark:border-brand-500/20 shadow-glass`}>
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-500/10 rounded-full blur-3xl" />
+                <div className="flex items-center gap-3 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-widest">
+                  <Clock className="w-4 h-4" />
+                  {isHoliday ? 'HOLIDAY STATUS' : (activeSession?.status === 'ACTIVE_CLASS' ? 'ACTIVE CLASS SESSION' : 'CLASS SESSION STATUS')}
                 </div>
-                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Institutional Holiday</h4>
-                <p className="text-slate-500 dark:text-slate-450 text-sm">
-                  Today is a holiday: <span className="font-bold text-brand-500">{holidayTitle}</span>. Enjoy your day off!
-                </p>
-              </div>
-            ) : activeSession?.status === 'ACTIVE_CLASS' ? (
-              <div className="mt-6 space-y-6">
-                <div>
-                  <h3 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight">{activeSession.data.subject_name}</h3>
-                  <p className="text-slate-550 dark:text-slate-400 text-sm mt-1">Code: <span className="font-semibold text-slate-800 dark:text-slate-200">{activeSession.data.subject_code}</span></p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-slate-200 dark:border-slate-800/80">
-                  <div>
-                    <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Location</span>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {activeSession.data.room_number?.includes('Lab')
-                        ? <><FlaskConical className="w-4 h-4 text-teal-500" /><span className="text-sm font-semibold text-teal-600 dark:text-teal-300">{activeSession.data.room_number}</span></>
-                        : <><MapPin className="w-4 h-4 text-slate-500" /><span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{activeSession.data.room_number || 'Online'}</span></>
-                      }
+                {isHoliday ? (
+                  <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto text-2xl animate-bounce">
+                      🌴
+                    </div>
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Institutional Holiday</h4>
+                    <p className="text-slate-500 dark:text-slate-450 text-sm">
+                      Today is a holiday: <span className="font-bold text-brand-500">{holidayTitle}</span>. Enjoy your day off!
+                    </p>
+                  </div>
+                ) : activeSession?.status === 'ACTIVE_CLASS' ? (
+                  <div className="mt-6 space-y-6">
+                    <div>
+                      <h3 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight">{activeSession.data.subject_name}</h3>
+                      <p className="text-slate-550 dark:text-slate-400 text-sm mt-1">Code: <span className="font-semibold text-slate-800 dark:text-slate-200">{activeSession.data.subject_code}</span></p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-slate-200 dark:border-slate-800/80">
+                      <div>
+                        <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Location</span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {activeSession.data.room_number?.includes('Lab')
+                            ? <><FlaskConical className="w-4 h-4 text-teal-500" /><span className="text-sm font-semibold text-teal-600 dark:text-teal-300">{activeSession.data.room_number}</span></>
+                            : <><MapPin className="w-4 h-4 text-slate-500" /><span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{activeSession.data.room_number || 'Online'}</span></>
+                          }
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Schedule</span>
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{WEEKDAY_TO_DAY_ORDER_NAME[activeSession.data.day_of_week] || activeSession.data.day_of_week || 'Today'} - Period {activeSession.data.period_number}</div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Instructor</span>
+                        <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.staff_name || 'N/A'}</div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Schedule</span>
-                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{WEEKDAY_TO_DAY_ORDER_NAME[activeSession.data.day_of_week] || activeSession.data.day_of_week || 'Today'} - Period {activeSession.data.period_number}</div>
+                ) : activeSession?.status === 'BREAK' ? (
+                  <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
+                    <Coffee className="w-12 h-12 text-amber-500 animate-bounce" />
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Institutional Recess</h4>
+                    <p className="text-slate-500 dark:text-slate-450 text-sm">Enjoy a break! Next classes resume at 11:00 AM.</p>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-450 dark:text-slate-500 uppercase tracking-wider font-bold">Instructor</span>
-                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mt-1">{activeSession.data.staff_name || 'N/A'}</div>
-                  </div>
-                </div>
-              </div>
-            ) : activeSession?.status === 'BREAK' ? (
-              <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
-                <Coffee className="w-12 h-12 text-amber-500 animate-bounce" />
-                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Institutional Recess</h4>
-                <p className="text-slate-500 dark:text-slate-450 text-sm">Enjoy a break! Next classes resume at 11:00 AM.</p>
-              </div>
-            ) : activeSession?.status === 'FREE_SLOT' ? (
-              <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
-                <CheckCircle className="w-12 h-12 text-green-500 animate-pulse" />
-                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Free Period (Hour {activeSession.period})</h4>
-                <p className="text-slate-550 dark:text-slate-450 text-sm">No classes scheduled during this time slot.</p>
-              </div>
-            ) : (
-              <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
-                <Clock className="w-12 h-12 text-slate-400 dark:text-slate-500" />
-                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">No Active Classes</h4>
-                <p className="text-slate-500 dark:text-slate-450 text-sm">Sessions held Mon-Fri, 08:15 AM - 12:30 PM.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="glass-panel p-6 rounded-3xl space-y-6">
-            {/* Next Up Preview */}
-            {nextSession && !isHoliday && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
-                  <ArrowRight className="w-4 h-4 text-brand-500" />
-                  Next Up
-                </h4>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-brand-500/5 to-indigo-500/5 border border-brand-500/15 space-y-2">
-                  <p className="text-xs font-black text-slate-800 dark:text-white">{nextSession.subject_name}</p>
-                  <div className="flex flex-wrap gap-x-3 text-[10px] text-slate-500 dark:text-slate-400">
-                    <span>Hour {nextSession.period < 4 ? nextSession.period : nextSession.period - 1}</span>
-                    <span>•</span>
-                    <span>{nextSession.time}</span>
-                    <span>•</span>
-                    <span>{nextSession.room_number || 'Online'}</span>
-                  </div>
-                  {nextSession.staff_name && (
-                    <p className="text-[10px] text-slate-450 dark:text-slate-500">Instructor: <span className="font-bold text-slate-700 dark:text-slate-300">{nextSession.staff_name}</span></p>
-                  )}
-                </div>
-              </div>
-            )}
-            {user.role === 'Staff' && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide">Free Periods Summary</h4>
-                {freeSlots.length > 0 ? (
-                  <div className="p-4 rounded-xl bg-brand-500/5 border border-brand-500/15 space-y-3">
-                    <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-wider">
-                      <Clock className="w-4 h-4" />
-                      {freeSlots.length} Free Periods Available
-                    </div>
-                    <ul className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                      {freeSlots.map((slot, i) => {
-                        // Check if this free slot is also a gap (idle period in-between classes)
-                        const isGap = gaps.some(g => g.day === slot.day && g.period === slot.hour);
-                        return (
-                          <li key={i} className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-200/20 text-xs text-slate-700 dark:text-slate-300">
-                            <span className="font-semibold">{slot.day}</span>
-                            <div className="flex items-center gap-2">
-                              {isGap && (
-                                <span className="text-[8px] font-extrabold bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-wide">
-                                  Gap / Idle
-                                </span>
-                              )}
-                              <span className="font-bold text-[10px] bg-brand-500/10 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded">
-                                Hour {slot.hour}
-                              </span>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                ) : activeSession?.status === 'FREE_SLOT' ? (
+                  <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
+                    <CheckCircle className="w-12 h-12 text-green-500 animate-pulse" />
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200">Free Period (Hour {activeSession.period})</h4>
+                    <p className="text-slate-550 dark:text-slate-450 text-sm">No classes scheduled during this time slot.</p>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/20 flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-red-650 dark:text-red-400 shrink-0" />
-                    <div className="text-xs">
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">No Free Time</p>
-                      <p className="text-slate-550 dark:text-slate-400">100% of your teaching slots are scheduled!</p>
-                    </div>
+                  <div className="mt-8 flex flex-col items-center justify-center py-8 text-center space-y-3">
+                    <Clock className="w-12 h-12 text-slate-400 dark:text-slate-500" />
+                    <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 font-mono">No Active Classes</h4>
+                    <p className="text-slate-500 dark:text-slate-450 text-sm">Sessions held Mon-Fri, 08:15 AM - 12:30 PM.</p>
                   </div>
                 )}
               </div>
-            )}
-            <div className="space-y-4">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide">Daily Checks</h4>
-              <div className="space-y-3">
-                {[
-                  { ok: true, label: 'Database Loaded', sub: 'Institutional profiles connected' },
-                  { ok: true, label: 'Conflict Check', sub: 'CSP engine validation passed' },
-                  { ok: false, label: 'Syllabus Updates', sub: 'Curriculum mappings available' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-200/20 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800/40">
-                    {item.ok
-                      ? <CheckCircle className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
-                      : <HelpCircle className="w-5 h-5 text-slate-500 shrink-0" />}
-                    <div className="text-xs">
-                      <p className={`font-semibold ${item.ok ? 'text-slate-800 dark:text-slate-200' : 'text-slate-500 dark:text-slate-450'}`}>{item.label}</p>
-                      <p className={item.ok ? 'text-slate-550 dark:text-slate-400' : 'text-slate-650 dark:text-slate-550'}>{item.sub}</p>
+
+              {hasRightSideContent && (
+                <div className="glass-panel p-6 rounded-3xl space-y-6">
+                  {/* Next Up Preview */}
+                  {nextSession && !isHoliday && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                        <ArrowRight className="w-4 h-4 text-brand-500" />
+                        Next Up
+                      </h4>
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-brand-500/5 to-indigo-500/5 border border-brand-500/15 space-y-2">
+                        <p className="text-xs font-black text-slate-800 dark:text-white">{nextSession.subject_name}</p>
+                        <div className="flex flex-wrap gap-x-3 text-[10px] text-slate-500 dark:text-slate-400">
+                          <span>Hour {nextSession.period < 4 ? nextSession.period : nextSession.period - 1}</span>
+                          <span>•</span>
+                          <span>{nextSession.time}</span>
+                          <span>•</span>
+                          <span>{nextSession.room_number || 'Online'}</span>
+                        </div>
+                        {nextSession.staff_name && (
+                          <p className="text-[10px] text-slate-450 dark:text-slate-500">Instructor: <span className="font-bold text-slate-700 dark:text-slate-300">{nextSession.staff_name}</span></p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  )}
+                  {user.role === 'Staff' && (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-300 uppercase tracking-wide">Free Periods Summary</h4>
+                      {freeSlots.length > 0 ? (
+                        <div className="p-4 rounded-xl bg-brand-500/5 border border-brand-500/15 space-y-3">
+                          <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-wider">
+                            <Clock className="w-4 h-4" />
+                            {freeSlots.length} Free Periods Available
+                          </div>
+                          <ul className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                            {freeSlots.map((slot, i) => {
+                              const isGap = gaps.some(g => g.day === slot.day && g.period === slot.hour);
+                              return (
+                                <li key={i} className="flex justify-between items-center bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-200/20 text-xs text-slate-700 dark:text-slate-300">
+                                  <span className="font-semibold">{slot.day}</span>
+                                  <div className="flex items-center gap-2">
+                                    {isGap && (
+                                      <span className="text-[8px] font-extrabold bg-red-500/20 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded border border-red-500/30 uppercase tracking-wide">
+                                        Gap / Idle
+                                      </span>
+                                    )}
+                                    <span className="font-bold text-[10px] bg-brand-500/10 text-brand-600 dark:text-brand-400 px-2 py-0.5 rounded">
+                                      Hour {slot.hour}
+                                    </span>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-500/20 flex items-center gap-3">
+                          <AlertTriangle className="w-5 h-5 text-red-650 dark:text-red-400 shrink-0" />
+                          <div className="text-xs">
+                            <p className="font-semibold text-slate-800 dark:text-slate-200">No Free Time</p>
+                            <p className="text-slate-550 dark:text-slate-400">100% of your teaching slots are scheduled!</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+          );
+        })()
       )}
       {/* ── Details Modal Overlay ────────────────────────────────────────── */}
       {activeModal && (() => {

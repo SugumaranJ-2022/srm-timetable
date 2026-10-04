@@ -1,6 +1,7 @@
 import io
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from sqlalchemy import text
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Any
@@ -10,16 +11,21 @@ from backend.app.core.security import get_password_hash
 from backend.app.api.auth import get_current_admin, get_current_user
 from backend.app.models.models import (
     User, Department, Subject, Staff, Student, Section, Classroom,
-    staff_subject_association, SectionSubject
+    staff_subject_association, SectionSubject, PreAllocatedSlot, TimeSlot, Timetable
 )
 from backend.app.schemas.schemas import (
     DepartmentOut, DepartmentCreate, SubjectOut, SubjectCreate,
     ClassroomOut, ClassroomCreate, SectionOut, SectionCreate,
-    StaffOut, StaffCreate, StudentOut, StudentCreate, SectionSubjectCreate, SectionSubjectOut,
+    StaffOut, StaffCreate, StaffUpdate, StudentOut, StudentCreate, SectionSubjectCreate, SectionSubjectOut,
     CalendarEventCreate, CalendarEventOut
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+@router.get("/timeslots")
+async def get_timeslots(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(TimeSlot))
+    return result.scalars().all()
 
 @router.get("/download-template")
 async def download_template(current_user = Depends(get_current_admin)):
@@ -418,6 +424,7 @@ async def import_master(
     df_sec_subs = read_sheet("Section Subjects")
     df_students = read_sheet("Students")
     df_calendar = read_sheet("Academic Calendar")
+    df_pre_alloc = read_sheet("Pre-Allocated Slots")
 
     # Detect database dialect for correct truncation strategy
     from backend.app.core.config import settings
@@ -426,7 +433,44 @@ async def import_master(
     if is_sqlite:
         await db.execute(text("PRAGMA foreign_keys = OFF"))
 
-    # Truncate all tables
+    # If Excel explicitly contains a Pre-Allocated Slots sheet, wipe and reload it.
+    # Otherwise, PRESERVE existing pre-allocated slots already set in the database!
+    pre_alloc_backup = []
+    if df_pre_alloc is not None and len(df_pre_alloc) > 0:
+        if is_sqlite:
+            await db.execute(text("DELETE FROM pre_allocated_slots"))
+        else:
+            await db.execute(text("TRUNCATE TABLE pre_allocated_slots CASCADE"))
+    else:
+        # Backup existing pre-allocated slots before wiping tables so they can be re-linked
+        res_existing_pre = await db.execute(select(PreAllocatedSlot))
+        existing_pre_slots = res_existing_pre.scalars().all()
+        for ps in existing_pre_slots:
+            sec = (await db.execute(select(Section).where(Section.id == ps.section_id))).scalar_one_or_none()
+            sub = (await db.execute(select(Subject).where(Subject.id == ps.subject_id))).scalar_one_or_none()
+            stf = (await db.execute(select(Staff).where(Staff.id == ps.staff_id))).scalar_one_or_none()
+            usr = (await db.execute(select(User).where(User.id == stf.user_id))).scalar_one_or_none() if stf else None
+            ts = (await db.execute(select(TimeSlot).where(TimeSlot.id == ps.timeslot_id))).scalar_one_or_none()
+            cr = (await db.execute(select(Classroom).where(Classroom.id == ps.classroom_id))).scalar_one_or_none() if ps.classroom_id else None
+            
+            if sec and sub and stf and ts:
+                pre_alloc_backup.append({
+                    "section_name": sec.name,
+                    "subject_code": sub.code,
+                    "subject_name": sub.name,
+                    "staff_name": stf.name,
+                    "staff_email": usr.email if usr else None,
+                    "day_of_week": ts.day_of_week,
+                    "period_number": ts.period_number,
+                    "room_number": cr.room_number if cr else None
+                })
+        
+        if is_sqlite:
+            await db.execute(text("DELETE FROM pre_allocated_slots"))
+        else:
+            await db.execute(text("TRUNCATE TABLE pre_allocated_slots CASCADE"))
+
+    # Truncate all master data and solved timetable tables
     tables_to_clear = [
         "substitutions",
         "timetable_details",
@@ -572,6 +616,127 @@ async def import_master(
                 subject_id=int(row["subject_id"]),
                 assigned_staff_id=int(row["assigned_staff_id"])
             ))
+        await db.flush()
+
+    # 8b. Insert Pre-Allocated Slots if present in Excel, or restore from pre-upload backup
+    restored_pre_alloc_count = 0
+    if df_pre_alloc is not None and len(df_pre_alloc) > 0:
+        for _, row in df_pre_alloc.iterrows():
+            classroom_id = int(row["classroom_id"]) if pd.notna(row.get("classroom_id")) else None
+            db.add(PreAllocatedSlot(
+                section_id=int(row["section_id"]),
+                subject_id=int(row["subject_id"]),
+                staff_id=int(row["staff_id"]),
+                timeslot_id=int(row["timeslot_id"]),
+                classroom_id=classroom_id
+            ))
+            restored_pre_alloc_count += 1
+        await db.flush()
+    elif pre_alloc_backup:
+        # Restore pre-allocated slots set in the UI prior to Excel upload
+        for bkp in pre_alloc_backup:
+            # 1. Find target Section by name
+            sec_res = await db.execute(select(Section).where(Section.name == bkp["section_name"]))
+            sec = sec_res.scalar_one_or_none()
+            if not sec:
+                continue
+
+            # 2. Find or create Subject (e.g. Tamil, English, Maths, Hindi from other depts)
+            sub_res = await db.execute(select(Subject).where(Subject.code == bkp["subject_code"]))
+            sub = sub_res.scalar_one_or_none()
+            if not sub and bkp["subject_name"]:
+                sub_res_by_name = await db.execute(select(Subject).where(Subject.name == bkp["subject_name"]))
+                sub = sub_res_by_name.scalar_one_or_none()
+            
+            if not sub:
+                dept_res = await db.execute(select(Department))
+                depts = dept_res.scalars().all()
+                target_dept = next((d for d in depts if "Language" in d.name or "Science" in d.name or "General" in d.name), depts[0] if depts else None)
+                dept_id = target_dept.id if target_dept else 1
+                sub = Subject(
+                    code=bkp["subject_code"] or f"EXT-{bkp['subject_name'][:3].upper()}",
+                    name=bkp["subject_name"],
+                    credits=3,
+                    semester=sec.semester,
+                    department_id=dept_id
+                )
+                db.add(sub)
+                await db.flush()
+
+            # 3. Find or create Staff (other dept faculty)
+            stf = None
+            if bkp["staff_email"]:
+                usr_res = await db.execute(select(User).where(User.email == bkp["staff_email"]))
+                usr_obj = usr_res.scalar_one_or_none()
+                if usr_obj:
+                    stf_res = await db.execute(select(Staff).where(Staff.user_id == usr_obj.id))
+                    stf = stf_res.scalar_one_or_none()
+            if not stf and bkp["staff_name"]:
+                stf_res_by_name = await db.execute(select(Staff).where(Staff.name == bkp["staff_name"]))
+                stf = stf_res_by_name.scalar_one_or_none()
+            
+            if not stf and bkp["staff_name"]:
+                gen_email = bkp["staff_email"] or f"{bkp['staff_name'].lower().replace(' ', '.')}@srmist.edu.in"
+                # Check user email collision
+                user_res = await db.execute(select(User).where(User.email == gen_email))
+                existing_usr = user_res.scalar_one_or_none()
+                if not existing_usr:
+                    new_usr = User(
+                        email=gen_email,
+                        password_hash=get_password_hash("Staff123!"),
+                        role="Staff"
+                    )
+                    db.add(new_usr)
+                    await db.flush()
+                    user_id = new_usr.id
+                else:
+                    user_id = existing_usr.id
+
+                stf = Staff(
+                    user_id=user_id,
+                    name=bkp["staff_name"]
+                )
+                db.add(stf)
+                await db.flush()
+
+            # 4. Find Timeslot by day and period
+            ts_res = await db.execute(select(TimeSlot).where(
+                TimeSlot.day_of_week == bkp["day_of_week"],
+                TimeSlot.period_number == bkp["period_number"]
+            ))
+            ts = ts_res.scalar_one_or_none()
+
+            # 5. Find Classroom if specified
+            cr = None
+            if bkp["room_number"]:
+                cr_res = await db.execute(select(Classroom).where(Classroom.room_number == bkp["room_number"]))
+                cr = cr_res.scalar_one_or_none()
+
+            if sec and sub and stf and ts:
+                # Ensure SectionSubject mapping exists so solver recognizes the assignment
+                sec_sub_res = await db.execute(select(SectionSubject).where(
+                    SectionSubject.section_id == sec.id,
+                    SectionSubject.subject_id == sub.id
+                ))
+                sec_sub = sec_sub_res.scalar_one_or_none()
+                if not sec_sub:
+                    db.add(SectionSubject(
+                        section_id=sec.id,
+                        subject_id=sub.id,
+                        assigned_staff_id=stf.id
+                    ))
+                    await db.flush()
+                else:
+                    sec_sub.assigned_staff_id = stf.id
+
+                db.add(PreAllocatedSlot(
+                    section_id=sec.id,
+                    subject_id=sub.id,
+                    staff_id=stf.id,
+                    timeslot_id=ts.id,
+                    classroom_id=cr.id if cr else None
+                ))
+                restored_pre_alloc_count += 1
         await db.flush()
 
     # 9. Insert Users and Students
@@ -782,6 +947,7 @@ async def wipe_all_database_data(
             await db.execute(text("PRAGMA foreign_keys = OFF"))
 
         tables_to_clear = [
+            "pre_allocated_slots",
             "substitutions",
             "timetable_details",
             "timetables",
@@ -817,5 +983,228 @@ async def wipe_all_database_data(
         traceback.print_exc()
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Database wipe failed: {str(e)}")
+
+# Single Resource Update & Delete Endpoints
+
+@router.put("/staff/{staff_id}", response_model=StaffOut)
+async def update_staff(
+    staff_id: int,
+    staff_in: StaffUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Staff).where(Staff.id == staff_id))
+    stf = res.scalar_one_or_none()
+    if not stf:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    stf.name = staff_in.name
+    stf.phone = staff_in.phone
+    if staff_in.status:
+        stf.status = staff_in.status
+
+    if stf.user_id:
+        u_res = await db.execute(select(User).where(User.id == stf.user_id))
+        u = u_res.scalar_one_or_none()
+        if u:
+            if staff_in.email:
+                u.email = staff_in.email
+            if staff_in.password:
+                u.hashed_password = get_password_hash(staff_in.password)
+
+    await db.commit()
+    await db.refresh(stf)
+    return stf
+
+@router.delete("/staff/{staff_id}")
+async def delete_staff(
+    staff_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Staff).where(Staff.id == staff_id))
+    stf = res.scalar_one_or_none()
+    if not stf:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+
+    await db.execute(text(f"DELETE FROM pre_allocated_slots WHERE staff_id = {staff_id}"))
+    await db.execute(text(f"DELETE FROM timetable_details WHERE staff_id = {staff_id}"))
+    await db.execute(text(f"DELETE FROM section_subjects WHERE assigned_staff_id = {staff_id}"))
+    
+    if stf.user_id:
+        await db.execute(text(f"DELETE FROM users WHERE id = {stf.user_id}"))
+
+    await db.delete(stf)
+    await db.commit()
+    return {"message": "Staff member deleted successfully"}
+
+@router.put("/classrooms/{classroom_id}", response_model=ClassroomOut)
+async def update_classroom(
+    classroom_id: int,
+    cr_in: ClassroomCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Classroom).where(Classroom.id == classroom_id))
+    cr = res.scalar_one_or_none()
+    if not cr:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+
+    cr.room_number = cr_in.room_number
+    cr.building = cr_in.building
+    cr.floor = cr_in.floor
+    cr.capacity = cr_in.capacity
+    if cr_in.room_type:
+        cr.room_type = cr_in.room_type
+
+    await db.commit()
+    await db.refresh(cr)
+    return cr
+
+@router.delete("/classrooms/{classroom_id}")
+async def delete_classroom(
+    classroom_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Classroom).where(Classroom.id == classroom_id))
+    cr = res.scalar_one_or_none()
+    if not cr:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+
+    await db.execute(text(f"UPDATE pre_allocated_slots SET classroom_id = NULL WHERE classroom_id = {classroom_id}"))
+    await db.execute(text(f"UPDATE timetable_details SET classroom_id = NULL WHERE classroom_id = {classroom_id}"))
+    await db.execute(text(f"UPDATE sections SET classroom_id = NULL WHERE classroom_id = {classroom_id}"))
+
+    await db.delete(cr)
+    await db.commit()
+    return {"message": "Classroom deleted successfully"}
+
+@router.put("/subjects/{subject_id}", response_model=SubjectOut)
+async def update_subject(
+    subject_id: int,
+    sub_in: SubjectCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Subject).where(Subject.id == subject_id))
+    sub = res.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    sub.code = sub_in.code
+    sub.name = sub_in.name
+    sub.credits = sub_in.credits
+    sub.semester = sub_in.semester
+    sub.department_id = sub_in.department_id
+    sub.is_project = sub_in.is_project
+
+    await db.commit()
+    await db.refresh(sub)
+    return sub
+
+@router.delete("/subjects/{subject_id}")
+async def delete_subject(
+    subject_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Subject).where(Subject.id == subject_id))
+    sub = res.scalar_one_or_none()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subject not found")
+
+    await db.execute(text(f"DELETE FROM pre_allocated_slots WHERE subject_id = {subject_id}"))
+    await db.execute(text(f"DELETE FROM timetable_details WHERE subject_id = {subject_id}"))
+    await db.execute(text(f"DELETE FROM section_subjects WHERE subject_id = {subject_id}"))
+
+    await db.delete(sub)
+    await db.commit()
+    return {"message": "Subject deleted successfully"}
+
+@router.put("/sections/{section_id}", response_model=SectionOut)
+async def update_section(
+    section_id: int,
+    sec_in: SectionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Section).where(Section.id == section_id))
+    sec = res.scalar_one_or_none()
+    if not sec:
+        raise HTTPException(status_code=404, detail="Section not found")
+
+    sec.name = sec_in.name
+    sec.program = sec_in.program
+    sec.semester = sec_in.semester
+    sec.strength = sec_in.strength
+    sec.class_advisor_id = sec_in.class_advisor_id
+    sec.classroom_id = sec_in.classroom_id
+    sec.enable_zero_free_periods = sec_in.enable_zero_free_periods
+
+    await db.commit()
+    await db.refresh(sec)
+    return sec
+
+@router.delete("/sections/{section_id}")
+async def delete_section(
+    section_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(Section).where(Section.id == section_id))
+    sec = res.scalar_one_or_none()
+    if not sec:
+        raise HTTPException(status_code=404, detail="Section not found")
+
+    tt_res = await db.execute(select(Timetable).where(Timetable.section_id == section_id))
+    for tt in tt_res.scalars().all():
+        await db.execute(text(f"DELETE FROM timetable_details WHERE timetable_id = {tt.id}"))
+        await db.delete(tt)
+
+    await db.execute(text(f"DELETE FROM pre_allocated_slots WHERE section_id = {section_id}"))
+    await db.execute(text(f"DELETE FROM section_subjects WHERE section_id = {section_id}"))
+    await db.execute(text(f"DELETE FROM students WHERE section_id = {section_id}"))
+
+    await db.delete(sec)
+    await db.commit()
+    return {"message": "Section deleted successfully"}
+
+@router.put("/section-subjects/{id}")
+async def update_section_subject(
+    id: int,
+    ss_in: SectionSubjectCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(SectionSubject).where(SectionSubject.id == id))
+    ss = res.scalar_one_or_none()
+    if not ss:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+
+    ss.section_id = ss_in.section_id
+    ss.subject_id = ss_in.subject_id
+    ss.assigned_staff_id = ss_in.assigned_staff_id
+    if ss_in.weekly_periods:
+        ss.weekly_periods = ss_in.weekly_periods
+
+    await db.commit()
+    await db.refresh(ss)
+    return ss
+
+@router.delete("/section-subjects/{id}")
+async def delete_section_subject(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    res = await db.execute(select(SectionSubject).where(SectionSubject.id == id))
+    ss = res.scalar_one_or_none()
+    if not ss:
+        raise HTTPException(status_code=404, detail="Mapping not found")
+
+    await db.delete(ss)
+    await db.commit()
+    return {"message": "Section subject mapping deleted successfully"}
 
 

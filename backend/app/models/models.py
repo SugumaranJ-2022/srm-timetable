@@ -162,6 +162,7 @@ class Timetable(Base):
     academic_year = Column(String(20), nullable=False)
     semester = Column(Integer, nullable=False)
     is_active = Column(Boolean, default=True)
+    is_published = Column(Boolean, default=False)
     version = Column(Integer, default=1)
 
     # Relationships
@@ -178,6 +179,7 @@ class TimetableDetail(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
     classroom_id = Column(Integer, ForeignKey("classrooms.id", ondelete="SET NULL"), nullable=True)  # Nullable for Online
+    is_manual = Column(Boolean, default=False)
 
     # Relationships
     timetable = relationship("Timetable", back_populates="details")
@@ -185,6 +187,25 @@ class TimetableDetail(Base):
     subject = relationship("Subject", back_populates="timetable_details")
     staff = relationship("Staff", back_populates="timetable_details")
     classroom = relationship("Classroom", back_populates="timetable_details")
+
+
+class PreAllocatedSlot(Base):
+    __tablename__ = "pre_allocated_slots"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    section_id = Column(Integer, ForeignKey("sections.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    staff_id = Column(Integer, ForeignKey("staff.id", ondelete="CASCADE"), nullable=False)
+    timeslot_id = Column(Integer, ForeignKey("timeslots.id", ondelete="CASCADE"), nullable=False)
+    classroom_id = Column(Integer, ForeignKey("classrooms.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    # Relationships
+    section = relationship("Section")
+    subject = relationship("Subject")
+    staff = relationship("Staff")
+    timeslot = relationship("TimeSlot")
+    classroom = relationship("Classroom")
 
 
 class AcademicCalendarEvent(Base):

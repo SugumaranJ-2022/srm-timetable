@@ -44,26 +44,37 @@ export const authApi = {
 
 // Admin CRUD endpoints
 export const adminApi = {
+  getTimeSlots: () => api.get('/admin/timeslots').then(res => res.data),
   getDepartments: () => api.get('/admin/departments').then(res => res.data),
   createDepartment: (name) => api.post('/admin/departments', { name }).then(res => res.data),
   
   getSubjects: () => api.get('/admin/subjects').then(res => res.data),
   createSubject: (data) => api.post('/admin/subjects', data).then(res => res.data),
+  updateSubject: (id, data) => api.put(`/admin/subjects/${id}`, data).then(res => res.data),
+  deleteSubject: (id) => api.delete(`/admin/subjects/${id}`).then(res => res.data),
   
   getClassrooms: () => api.get('/admin/classrooms').then(res => res.data),
   createClassroom: (data) => api.post('/admin/classrooms', data).then(res => res.data),
+  updateClassroom: (id, data) => api.put(`/admin/classrooms/${id}`, data).then(res => res.data),
+  deleteClassroom: (id) => api.delete(`/admin/classrooms/${id}`).then(res => res.data),
   
   getSections: () => api.get('/admin/sections').then(res => res.data),
   createSection: (data) => api.post('/admin/sections', data).then(res => res.data),
+  updateSection: (id, data) => api.put(`/admin/sections/${id}`, data).then(res => res.data),
+  deleteSection: (id) => api.delete(`/admin/sections/${id}`).then(res => res.data),
   
   getStaff: () => api.get('/admin/staff').then(res => res.data),
   createStaff: (data) => api.post('/admin/staff', data).then(res => res.data),
+  updateStaff: (id, data) => api.put(`/admin/staff/${id}`, data).then(res => res.data),
+  deleteStaff: (id) => api.delete(`/admin/staff/${id}`).then(res => res.data),
   
   getStudents: () => api.get('/admin/students').then(res => res.data),
   createStudent: (data) => api.post('/admin/students', data).then(res => res.data),
 
   getSectionSubjects: () => api.get('/admin/section-subjects').then(res => res.data),
   createSectionSubject: (data) => api.post('/admin/section-subjects', data).then(res => res.data),
+  updateSectionSubject: (id, data) => api.put(`/admin/section-subjects/${id}`, data).then(res => res.data),
+  deleteSectionSubject: (id) => api.delete(`/admin/section-subjects/${id}`).then(res => res.data),
 
   importData: (type, file) => {
     const formData = new FormData();
@@ -90,6 +101,8 @@ export const adminApi = {
 
 // Timetable endpoints
 export const timetableApi = {
+  getPublicStaff: () => api.get('/timetables/public/staff').then(res => res.data),
+  getPublicSections: () => api.get('/timetables/public/sections').then(res => res.data),
   generate: (academicYear, semester) => api.post('/timetables/generate', { academic_year: academicYear, semester }).then(res => res.data),
   getSectionTimetable: (sectionId, date = '') => api.get(`/timetables/section/${sectionId}${date ? `?date=${date}` : ''}`).then(res => res.data),
   getStaffTimetable: (staffId) => api.get(`/timetables/staff/${staffId}`).then(res => res.data),
@@ -102,6 +115,13 @@ export const timetableApi = {
   deleteSubstitution: (subId) => api.delete(`/timetables/substitution/${subId}`).then(res => res.data),
   getSubstitutionsByDate: (date) => api.get(`/timetables/substitutions/date/${date}`).then(res => res.data),
   getStaffLoadAnalytics: () => api.get('/timetables/analytics/staff-load').then(res => res.data),
+  
+  getPreAllocatedSlots: (sectionId = null) => api.get(`/timetables/pre-allocated-slots${sectionId ? `?section_id=${sectionId}` : ''}`).then(res => res.data),
+  createPreAllocatedSlot: (data) => api.post('/timetables/pre-allocated-slots', data).then(res => res.data),
+  deletePreAllocatedSlot: (slotId) => api.delete(`/timetables/pre-allocated-slots/${slotId}`).then(res => res.data),
+  clearAllPreAllocatedSlots: () => api.delete('/timetables/pre-allocated-slots-clear-all').then(res => res.data),
+  publishTimetables: (isPublished, semester = null) => api.post('/timetables/publish', { is_published: isPublished, semester }).then(res => res.data),
+  getPublishStatus: () => api.get('/timetables/publish-status').then(res => res.data),
 };
 
 export const calendarApi = {

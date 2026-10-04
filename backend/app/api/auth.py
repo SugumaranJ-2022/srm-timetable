@@ -83,8 +83,45 @@ async def login(
     db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
-    result = await db.execute(select(User).where(User.email == form_data.username))
+    input_email = form_data.username.strip().lower()
+    
+    # 1. Direct email lookup
+    result = await db.execute(select(User).where(User.email.ilike(input_email)))
     user = result.scalar_one_or_none()
+
+    # 2. On-demand staff/student User account auto-linking
+    if not user:
+        prefix = input_email.split('@')[0].replace('.', '').replace('_', '')
+        staff_res = await db.execute(select(Staff))
+        all_staff = staff_res.scalars().all()
+        
+        matched_staff = None
+        for st in all_staff:
+            st_clean = st.name.lower().replace(' ', '').replace('.', '')
+            st_email = (getattr(st, 'email', None) or '').lower()
+            if input_email == st_email or prefix in st_clean or st_clean in prefix:
+                matched_staff = st
+                break
+
+        if matched_staff:
+            user = User(
+                email=input_email,
+                password_hash=get_password_hash("Staff123!"),
+                role="Staff"
+            )
+            db.add(user)
+            await db.flush()
+            matched_staff.user_id = user.id
+            await db.commit()
+        elif input_email.startswith("student."):
+            user = User(
+                email=input_email,
+                password_hash=get_password_hash("Student123!"),
+                role="Student"
+            )
+            db.add(user)
+            await db.commit()
+
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

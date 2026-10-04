@@ -9,50 +9,52 @@ from backend.app.models.models import (
 )
 
 # Baseline data definitions
-DEPARTMENTS = ["Computer Applications"]
+# Baseline data definitions
+DEPARTMENTS = ["Computer Applications", "Department of Tamil", "Department of English", "Department of Mathematics"]
 
 # Subjects and credits representing weekly class count
 SUBJECTS_DATA = [
-    # code, name, credits, semester, is_project
+    # code, name, credits, semester, is_project, department_name
     # MCA
-    ("MCA-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MCA-CQC", "Cryptography & Quantum Computing", 5, 1, False),
-    ("MCA-BD", "Big Data", 5, 1, False),
-    ("MCA-CV", "Computer Vision", 5, 1, False),
-    ("MCA-PRJ", "Project", 3, 1, True),
-    ("MCA-VAC", "Value Added Course", 2, 1, False),
+    ("MCA-DCN", "Data Communication & Networks", 5, 1, False, "Computer Applications"),
+    ("MCA-CQC", "Cryptography & Quantum Computing", 5, 1, False, "Computer Applications"),
+    ("MCA-BD", "Big Data", 5, 1, False, "Computer Applications"),
+    ("MCA-CV", "Computer Vision", 5, 1, False, "Computer Applications"),
+    ("MCA-PRJ", "Project", 3, 1, True, "Computer Applications"),
+    ("MCA-VAC", "Value Added Course", 2, 1, False, "Computer Applications"),
     
     # MCA (Gen AI)
-    ("MCAGAI-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MCAGAI-CQC", "Cryptography & Quantum Computing", 5, 1, False),
-    ("MCAGAI-BD", "Big Data", 5, 1, False),
-    ("MCAGAI-CV", "Computer Vision", 5, 1, False),
-    ("MCAGAI-PRJ", "Project", 3, 1, True),
-    ("MCAGAI-VAC", "Value Added Course", 2, 1, False),
+    ("MCAGAI-DCN", "Data Communication & Networks", 5, 1, False, "Computer Applications"),
+    ("MCAGAI-CQC", "Cryptography & Quantum Computing", 5, 1, False, "Computer Applications"),
+    ("MCAGAI-BD", "Big Data", 5, 1, False, "Computer Applications"),
+    ("MCAGAI-CV", "Computer Vision", 5, 1, False, "Computer Applications"),
+    ("MCAGAI-PRJ", "Project", 3, 1, True, "Computer Applications"),
+    ("MCAGAI-VAC", "Value Added Course", 2, 1, False, "Computer Applications"),
     
     # M.Sc.
-    ("MSC-DCN", "Data Communication & Networks", 5, 1, False),
-    ("MSC-CQC", "Cryptography & Quantum Computing", 5, 1, False),
-    ("MSC-BD", "Big Data", 5, 1, False),
-    ("MSC-CV", "Computer Vision", 5, 1, False),
-    ("MSC-PRJ", "Project", 3, 1, True),
-    ("MSC-VAC", "Value Added Course", 2, 1, False),
+    ("MSC-DCN", "Data Communication & Networks", 5, 1, False, "Computer Applications"),
+    ("MSC-CQC", "Cryptography & Quantum Computing", 5, 1, False, "Computer Applications"),
+    ("MSC-BD", "Big Data", 5, 1, False, "Computer Applications"),
+    ("MSC-CV", "Computer Vision", 5, 1, False, "Computer Applications"),
+    ("MSC-PRJ", "Project", 3, 1, True, "Computer Applications"),
+    ("MSC-VAC", "Value Added Course", 2, 1, False, "Computer Applications"),
+
+    # UG Common Languages & Mathematics
+    ("TAM101", "General Tamil I", 3, 1, False, "Department of Tamil"),
+    ("ENG101", "Communicative English I", 3, 1, False, "Department of English"),
+    ("MAT101", "Allied Mathematics I", 4, 1, False, "Department of Mathematics"),
     
     # BCA
-    ("BCA-PF", "Programming Fundamentals", 5, 1, False),
-    ("BCA-WD", "Web Development", 5, 1, False),
-    ("BCA-DBMS", "Database Management Systems", 5, 1, False),
-    ("BCA-CN", "Computer Networks", 5, 1, False),
-    ("BCA-PRJ", "Project", 3, 1, True),
-    ("BCA-VAC", "Value Added Course", 2, 1, False),
+    ("BCA-PF", "Programming Fundamentals", 5, 1, False, "Computer Applications"),
+    ("BCA-WD", "Web Development", 5, 1, False, "Computer Applications"),
+    ("BCA-PRJ", "Project", 3, 1, True, "Computer Applications"),
+    ("BCA-VAC", "Value Added Course", 2, 1, False, "Computer Applications"),
     
     # BCA (Gen AI)
-    ("BCAGAI-PF", "Programming Fundamentals", 5, 1, False),
-    ("BCAGAI-WD", "Web Development", 5, 1, False),
-    ("BCAGAI-AI", "Artificial Intelligence & Generative AI", 5, 1, False),
-    ("BCAGAI-CN", "Computer Networks", 5, 1, False),
-    ("BCAGAI-PRJ", "Project", 3, 1, True),
-    ("BCAGAI-VAC", "Value Added Course", 2, 1, False)
+    ("BCAGAI-PF", "Programming Fundamentals", 5, 1, False, "Computer Applications"),
+    ("BCAGAI-AI", "Artificial Intelligence & Generative AI", 5, 1, False, "Computer Applications"),
+    ("BCAGAI-PRJ", "Project", 3, 1, True, "Computer Applications"),
+    ("BCAGAI-VAC", "Value Added Course", 2, 1, False, "Computer Applications")
 ]
 
 SECTIONS_DATA = [
@@ -75,23 +77,25 @@ SECTIONS_DATA = [
     ("BCA (Gen AI) C", "BCA_GENAI", 1, 38)
 ]
 
-# 45 Custom Staff members
+# Staff roster including Tamil, English, and Maths faculty
 STAFF_ROSTER = [
-    # MCA
+    # MCA (0-5)
     "Dr. Rajesh Kumar", "Dr. Priya Sharma", "Dr. Arun Alagappan", "Dr. Sandeep Goel",
     "Dr. Amit Patel", "Dr. Shalini Rao",
-    # MCA Gen AI
+    # MCA Gen AI (6-11)
     "Dr. Rajeev Nair", "Dr. Neha Kapoor", "Dr. Preeti Sen", "Dr. Manoj Verma",
     "Dr. Divya Iyer", "Dr. Harish Joshi",
-    # MSC
+    # MSC (12-17)
     "Dr. Deepa Nair", "Dr. Surya Kumar", "Dr. Fahadh Faasil", "Dr. Mahesh Babu",
     "Mr. Anand Subramanian", "Mr. Vijay Kulkarni",
-    # BCA
+    # BCA (18-23)
     "Mr. Nitin Gadkari", "Mr. Sanjay Dutt", "Mr. Rohan Bopanna", "Mr. Tarun Tahiliani",
     "Mr. Nani Ghose", "Mr. Dulquer Salmaan",
-    # BCA Gen AI
+    # BCA Gen AI (24-29)
     "Ms. Anitha Devi", "Ms. Meena Jasmine", "Ms. Kavitha Rao", "Ms. Anjali Patil",
-    "Ms. Sneha Reddy", "Ms. Archana Puran"
+    "Ms. Sneha Reddy", "Ms. Archana Puran",
+    # Cross Dept Languages & Mathematics Faculty (30-32)
+    "Dr. S. Tamilselvan", "Dr. R. Elizabeth", "Dr. M. Ramanujan"
 ]
 
 CLASSROOMS_DATA = [
@@ -175,13 +179,13 @@ async def seed_data():
 
         # 3. Create Subjects
         subs_dict = {}
-        for code, name, credits, semester, is_project in SUBJECTS_DATA:
+        for code, name, credits, semester, is_project, dept_name in SUBJECTS_DATA:
             sub = Subject(
                 code=code,
                 name=name,
                 credits=credits,
                 semester=semester,
-                department_id=depts_dict["Computer Applications"],
+                department_id=depts_dict.get(dept_name, depts_dict["Computer Applications"]),
                 is_project=is_project
             )
             db.add(sub)
@@ -241,36 +245,36 @@ async def seed_data():
         await db.flush()
 
         # 7. Add StaffSubject associations (Competency pool)
-        # We split the 45 staff members:
-        # - Staff 0 to 10 (11 staff members) teach MCA subjects (indices 0 to 4 in subject_list)
-        # - Staff 11 to 20 (10 staff members) teach MCA (Gen AI) subjects (indices 5 to 9 in subject_list)
-        # - Staff 21 to 30 (10 staff members) teach M.Sc. subjects (indices 10 to 14 in subject_list)
-        # - Staff 31 to 44 (14 staff members) teach BCA subjects (indices 15 to 19 in subject_list)
-        subject_list = list(subs_dict.values())
-        
-        # Build local competency mapping for quick lookup
         staff_competency = {}
         for idx, staff in enumerate(staff_list):
             if idx <= 5:
                 # MCA
-                offset = 0
+                unique_sub_ids = [subs_dict[c].id for c in ["MCA-DCN", "MCA-CQC", "MCA-BD", "MCA-CV", "MCA-PRJ", "MCA-VAC"]]
             elif idx <= 11:
                 # MCA Gen AI
-                offset = 6
+                unique_sub_ids = [subs_dict[c].id for c in ["MCAGAI-DCN", "MCAGAI-CQC", "MCAGAI-BD", "MCAGAI-CV", "MCAGAI-PRJ", "MCAGAI-VAC"]]
             elif idx <= 17:
                 # MSC
-                offset = 12
+                unique_sub_ids = [subs_dict[c].id for c in ["MSC-DCN", "MSC-CQC", "MSC-BD", "MSC-CV", "MSC-PRJ", "MSC-VAC"]]
             elif idx <= 23:
                 # BCA
-                offset = 18
-            else:
+                unique_sub_ids = [subs_dict[c].id for c in ["BCA-PF", "BCA-WD", "BCA-PRJ", "BCA-VAC"]]
+            elif idx <= 29:
                 # BCA Gen AI
-                offset = 24
+                unique_sub_ids = [subs_dict[c].id for c in ["BCAGAI-PF", "BCAGAI-AI", "BCAGAI-PRJ", "BCAGAI-VAC"]]
+            elif idx == 30:
+                # Tamil
+                unique_sub_ids = [subs_dict["TAM101"].id]
+            elif idx == 31:
+                # English
+                unique_sub_ids = [subs_dict["ENG101"].id]
+            elif idx == 32:
+                # Maths
+                unique_sub_ids = [subs_dict["MAT101"].id]
+            else:
+                unique_sub_ids = []
             
-            # All 6 subjects for this program are added to competency
-            unique_sub_ids = [subject_list[offset + i].id for i in range(6)]
             staff_competency[staff.id] = unique_sub_ids
-            
             for sub_id in unique_sub_ids:
                 stmt = staff_subject_association.insert().values(staff_id=staff.id, subject_id=sub_id)
                 await db.execute(stmt)
@@ -280,7 +284,6 @@ async def seed_data():
         non_lab_rooms = [r for r in rooms if "Lab" not in r.room_number]
         sections_dict = {}
         for sname, prog, sem, strength in SECTIONS_DATA:
-            # Assign advisor (take first few staff members as advisors)
             advisor = staff_list[len(sections_dict) % len(staff_list)]
             room = non_lab_rooms[len(sections_dict) % len(non_lab_rooms)]
             sec = Section(
@@ -299,26 +302,24 @@ async def seed_data():
             await db.flush()
             sections_dict[sname] = sec
 
-        # 9. Create SectionSubject mappings (with load balancing)
+        # 9. Create SectionSubject mappings
         staff_load = {staff.id: 0 for staff in staff_list}
         from collections import defaultdict
         section_staff_assigned = defaultdict(set)
         staff_tue_thu_load = {staff.id: 0 for staff in staff_list}
         
-        # Collect all section-subjects to assign
         all_ss = []
         for sec_name, sec in sections_dict.items():
-            # Assign appropriate subjects to sections based on program (6 subjects per program)
             if sec.program == "MCA":
-                sec_subs = subject_list[0:6]
+                sec_subs = [subs_dict[c] for c in ["MCA-DCN", "MCA-CQC", "MCA-BD", "MCA-CV", "MCA-PRJ", "MCA-VAC"]]
             elif sec.program == "MCA_GENAI":
-                sec_subs = subject_list[6:12]
+                sec_subs = [subs_dict[c] for c in ["MCAGAI-DCN", "MCAGAI-CQC", "MCAGAI-BD", "MCAGAI-CV", "MCAGAI-PRJ", "MCAGAI-VAC"]]
             elif sec.program == "MSC":
-                sec_subs = subject_list[12:18]
+                sec_subs = [subs_dict[c] for c in ["MSC-DCN", "MSC-CQC", "MSC-BD", "MSC-CV", "MSC-PRJ", "MSC-VAC"]]
             elif sec.program == "BCA":
-                sec_subs = subject_list[18:24]
+                sec_subs = [subs_dict[c] for c in ["TAM101", "ENG101", "MAT101", "BCA-PF", "BCA-WD", "BCA-PRJ", "BCA-VAC"]]
             elif sec.program == "BCA_GENAI":
-                sec_subs = subject_list[24:30]
+                sec_subs = [subs_dict[c] for c in ["TAM101", "ENG101", "MAT101", "BCAGAI-PF", "BCAGAI-AI", "BCAGAI-PRJ", "BCAGAI-VAC"]]
             else:
                 sec_subs = []
             for sub in sec_subs:

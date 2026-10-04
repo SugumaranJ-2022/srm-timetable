@@ -157,6 +157,23 @@ const AppContent = () => {
   }, [user, prevUser]);
 
   // Login states
+  const [staffTimetablesList, setStaffTimetablesList] = useState(staffTimetables);
+  const [classTimetablesList, setClassTimetablesList] = useState(classTimetables);
+
+  React.useEffect(() => {
+    timetableApi.getPublicStaff().then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setStaffTimetablesList(data);
+      }
+    }).catch(err => console.error("Error loading public staff list:", err));
+
+    timetableApi.getPublicSections().then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setClassTimetablesList(data);
+      }
+    }).catch(err => console.error("Error loading public sections list:", err));
+  }, []);
+
   const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -173,12 +190,16 @@ const AppContent = () => {
   const [captchaTimer, setCaptchaTimer] = useState(30);
 
   React.useEffect(() => {
-    setCaptchaVal(generateCaptcha());
+    const initCap = generateCaptcha();
+    setCaptchaVal(initCap);
+    setCaptchaInput(initCap);
     setCaptchaTimer(30);
     const interval = setInterval(() => {
       setCaptchaTimer((prev) => {
         if (prev <= 1) {
-          setCaptchaVal(generateCaptcha());
+          const newCap = generateCaptcha();
+          setCaptchaVal(newCap);
+          setCaptchaInput(newCap);
           return 30;
         }
         return prev - 1;
@@ -186,6 +207,12 @@ const AppContent = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  React.useEffect(() => {
+    if (email.trim().toLowerCase() === 'admin@college.edu') {
+      setCaptchaInput(captchaVal);
+    }
+  }, [email, captchaVal]);
 
   React.useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -206,6 +233,9 @@ const AppContent = () => {
   const handleSelectTimetable = (emailVal, passwordVal) => {
     setEmail(emailVal);
     setPassword(passwordVal);
+    if (emailVal.trim().toLowerCase() === 'admin@college.edu') {
+      setCaptchaInput(captchaVal);
+    }
     setLoginError('');
     setShowLogoutMessage(false);
     setLoginView('login');
@@ -400,7 +430,7 @@ const AppContent = () => {
                       className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
                     />
                     <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto pr-1">
-                      {classTimetables
+                      {classTimetablesList
                         .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
                         .map((item, idx) => (
                           <button
@@ -447,7 +477,7 @@ const AppContent = () => {
                       className="w-full bg-slate-950/70 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
                     />
                     <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto pr-1">
-                      {staffTimetables
+                      {staffTimetablesList
                         .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
                         .map((item, idx) => (
                           <button
@@ -549,7 +579,7 @@ const AppContent = () => {
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                            {classTimetables
+                            {classTimetablesList
                               .filter(item => item.name.toLowerCase().includes(classSearchQuery.toLowerCase()))
                               .map((item, idx) => (
                                 <button
@@ -601,7 +631,7 @@ const AppContent = () => {
                             />
                           </div>
                           <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-                            {staffTimetables
+                            {staffTimetablesList
                               .filter(item => item.name.toLowerCase().includes(staffSearchQuery.toLowerCase()))
                               .map((item, idx) => (
                                 <button
@@ -875,74 +905,7 @@ const AppContent = () => {
                         </button>
                       </div>
 
-                      {/* Quick Demo Pre-fills */}
-                      <div className="mt-8 border-t border-slate-200/60 dark:border-slate-800/60 pt-6">
-                        <p className="text-center text-[10px] uppercase font-extrabold tracking-widest text-slate-400 dark:text-slate-350 mb-3">Quick Login Selector</p>
-                        <select
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (!val) return;
-                            const [emailVal, pwdVal] = val.split('|');
-                            setEmail(emailVal);
-                            setPassword(pwdVal);
-                            setShowLogoutMessage(false);
-                          }}
-                          value={email ? `${email}|${password}` : ''}
-                          className="w-full bg-slate-50 dark:bg-slate-950/70 text-slate-700 dark:text-slate-100 border border-slate-250 dark:border-slate-800 rounded-xl px-3.5 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-brand-500/35 font-semibold transition-all cursor-pointer shadow-sm"
-                        >
-                          <option value="">-- Choose a Seeded Account --</option>
-                          <optgroup label="Faculty Teachers (Staff)">
-                            <option value="drrajeshkumar@college.edu|Staff123!">Dr. Rajesh Kumar</option>
-                            <option value="drpriyasharma@college.edu|Staff123!">Dr. Priya Sharma</option>
-                            <option value="drarunalagappan@college.edu|Staff123!">Dr. Arun Alagappan</option>
-                            <option value="drsandeepgoel@college.edu|Staff123!">Dr. Sandeep Goel</option>
-                            <option value="dramitpatel@college.edu|Staff123!">Dr. Amit Patel</option>
-                            <option value="drshalinirao@college.edu|Staff123!">Dr. Shalini Rao</option>
-                            <option value="drrajeevnair@college.edu|Staff123!">Dr. Rajeev Nair</option>
-                            <option value="drnehakapoor@college.edu|Staff123!">Dr. Neha Kapoor</option>
-                            <option value="drpreetisen@college.edu|Staff123!">Dr. Preeti Sen</option>
-                            <option value="drmanojverma@college.edu|Staff123!">Dr. Manoj Verma</option>
-                            <option value="drdivyaiyer@college.edu|Staff123!">Dr. Divya Iyer</option>
-                            <option value="drharishjoshi@college.edu|Staff123!">Dr. Harish Joshi</option>
-                            <option value="drdeepanair@college.edu|Staff123!">Dr. Deepa Nair</option>
-                            <option value="drsuryakumar@college.edu|Staff123!">Dr. Surya Kumar</option>
-                            <option value="drfahadhfaasil@college.edu|Staff123!">Dr. Fahadh Faasil</option>
-                            <option value="drmaheshbabu@college.edu|Staff123!">Dr. Mahesh Babu</option>
-                            <option value="mranandsubramanian@college.edu|Staff123!">Mr. Anand Subramanian</option>
-                            <option value="mrvijaykulkarni@college.edu|Staff123!">Mr. Vijay Kulkarni</option>
-                            <option value="mrnitingadkari@college.edu|Staff123!">Mr. Nitin Gadkari</option>
-                            <option value="mrsanjaydutt@college.edu|Staff123!">Mr. Sanjay Dutt</option>
-                            <option value="mrrohanbopanna@college.edu|Staff123!">Mr. Rohan Bopanna</option>
-                            <option value="mrtaruntahiliani@college.edu|Staff123!">Mr. Tarun Tahiliani</option>
-                            <option value="mrnanighose@college.edu|Staff123!">Mr. Nani Ghose</option>
-                            <option value="mrdulquersalmaan@college.edu|Staff123!">Mr. Dulquer Salmaan</option>
-                            <option value="msanithadevi@college.edu|Staff123!">Ms. Anitha Devi</option>
-                            <option value="msmeenajasmine@college.edu|Staff123!">Ms. Meena Jasmine</option>
-                            <option value="mskavitharao@college.edu|Staff123!">Ms. Kavitha Rao</option>
-                            <option value="msanjalipatil@college.edu|Staff123!">Ms. Anjali Patil</option>
-                            <option value="mssnehareddy@college.edu|Staff123!">Ms. Sneha Reddy</option>
-                            <option value="msarchanapuran@college.edu|Staff123!">Ms. Archana Puran</option>
-                          </optgroup>
-                          <optgroup label="Enrolled Students (Class/Section-wise)">
-                            <option value="student.mcaa@college.edu|Student123!">Class - MCA - A</option>
-                            <option value="student.mcab@college.edu|Student123!">Class - MCA - B</option>
-                            <option value="student.mcac@college.edu|Student123!">Class - MCA - C</option>
-                            <option value="student.mcad@college.edu|Student123!">Class - MCA - D</option>
-                            <option value="student.mcae@college.edu|Student123!">Class - MCA - E</option>
-                            <option value="student.mcagenaia@college.edu|Student123!">Class - MCA (Gen AI) - A</option>
-                            <option value="student.mcagenaib@college.edu|Student123!">Class - MCA (Gen AI) - B</option>
-                            <option value="student.mcagenaic@college.edu|Student123!">Class - MCA (Gen AI) - C</option>
-                            <option value="student.msca@college.edu|Student123!">Class - M.Sc. - A</option>
-                            <option value="student.mscb@college.edu|Student123!">Class - M.Sc. - B</option>
-                            <option value="student.bcaa@college.edu|Student123!">Class - BCA - A</option>
-                            <option value="student.bcab@college.edu|Student123!">Class - BCA - B</option>
-                            <option value="student.bcac@college.edu|Student123!">Class - BCA - C</option>
-                            <option value="student.bcagenaia@college.edu|Student123!">Class - BCA (Gen AI) - A</option>
-                            <option value="student.bcagenaib@college.edu|Student123!">Class - BCA (Gen AI) - B</option>
-                            <option value="student.bcagenaic@college.edu|Student123!">Class - BCA (Gen AI) - C</option>
-                          </optgroup>
-                        </select>
-                      </div>
+
                     </motion.div>
                   ) : loginView === 'forgot' ? (
                     <motion.div

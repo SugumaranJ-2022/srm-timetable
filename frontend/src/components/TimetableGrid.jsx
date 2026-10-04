@@ -1,5 +1,5 @@
 import React from 'react';
-import { Monitor, MapPin, Coffee, AlertCircle, FlaskConical } from 'lucide-react';
+import { Monitor, MapPin, Coffee, AlertCircle, FlaskConical, Lock } from 'lucide-react';
 import { getDayOrderInfo, WEEKDAY_TO_DO_MAP, WEEKDAY_TO_DAY_ORDER_NAME } from '../utils/dayOrder';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -184,21 +184,28 @@ const TimetableGrid = ({
                         <div className="font-bold text-xs text-slate-800 dark:text-white tracking-wide truncate">
                           {detail.subject_name}
                         </div>
-                        {isProjectSub ? (
-                          <span className="text-[8px] font-extrabold text-red-600 dark:text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded border border-red-500/35 uppercase select-none">
-                            Proj
-                          </span>
-                        ) : isLabSub ? (
-                          <span className="text-base leading-none select-none" title="Lab Session">🖥️</span>
-                        ) : isVAC ? (
-                          <span className="text-[8px] font-extrabold text-purple-600 dark:text-purple-400 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/35 uppercase select-none">
-                            VAC
-                          </span>
-                        ) : slotType === 'Online' ? (
-                          <Monitor className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
-                        ) : (
-                          <span className="text-base leading-none select-none" title="Theory Class">📚</span>
-                        )}
+                        <div className="flex items-center gap-1 shrink-0">
+                          {detail.is_manual && (
+                            <span className="text-[8px] font-extrabold text-amber-600 dark:text-amber-400 bg-amber-500/20 px-1 py-0.5 rounded border border-amber-500/35 uppercase select-none flex items-center gap-0.5" title="Pre-allocated Locked UG Subject Slot">
+                              <Lock className="w-2.5 h-2.5" /> UG Fixed
+                            </span>
+                          )}
+                          {isProjectSub ? (
+                            <span className="text-[8px] font-extrabold text-red-600 dark:text-red-400 bg-red-500/20 px-1.5 py-0.5 rounded border border-red-500/35 uppercase select-none">
+                              Proj
+                            </span>
+                          ) : isLabSub ? (
+                            <span className="text-base leading-none select-none" title="Lab Session">🖥️</span>
+                          ) : isVAC ? (
+                            <span className="text-[8px] font-extrabold text-purple-600 dark:text-purple-400 bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/35 uppercase select-none">
+                              VAC
+                            </span>
+                          ) : slotType === 'Online' ? (
+                            <Monitor className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
+                          ) : (
+                            <span className="text-base leading-none select-none" title="Theory Class">📚</span>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="text-[10px] text-slate-550 dark:text-slate-400 font-semibold mt-1">
