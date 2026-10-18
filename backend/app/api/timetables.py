@@ -2208,3 +2208,362 @@ async def get_open_elective_pool(
     return out
 
 
+# ==============================================================================
+# ULTRA UPGRADE 2: AI SMART SUBSTITUTION ENGINE & WORKLOAD REBALANCER
+# ==============================================================================
+
+class AIAutoSubstituteRequest(BaseModel):
+    staff_id: int
+    date: str
+    auto_apply: bool = False
+
+
+@router.post("/absence/ai-auto-substitute")
+async def ai_auto_substitute(
+    req: AIAutoSubstituteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_admin)
+):
+    """
+    AI Multi-Constraint Optimization for Faculty Absence:
+    Scores candidate substitutes on qualification, workload balance, and availability.
+    Can auto-apply the best candidates across all periods with 1 click.
+    """
+    from backend.app.models.models import AcademicCalendarEvent
+    from backend.app.core.day_order import get_day_order_info
+    from sqlalchemy import func
+
+    # Check date
+    try:
+        parsed_date = datetime.datetime.strptime(req.date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+    cal_res_all = await db.execute(select(AcademicCalendarEvent).where(AcademicCalendarEvent.type == "holiday"))
+    db_holidays = [ev.date for ev in cal_res_all.scalars().all()]
+    do_info = get_day_order_info(req.date, db_holidays)
+    target_day_of_week = do_info["timetable_day"] or do_info["day_of_week_name"]
+
+    if do_info["is_holiday"]:
+        return {"recommendations": [], "auto_applied": False, "message": "Target date is an official university holiday."}
+
+    # Timeslots
+    ts_res = await db.execute(select(TimeSlot).where(TimeSlot.day_of_week == target_day_of_week, TimeSlot.slot_type == "Regular"))
+    timeslots_map = {ts.id: ts for ts in ts_res.scalars().all()}
+    if not timeslots_map:
+        return {"recommendations": [], "auto_applied": False, "message": "No regular academic slots on this day."}
+
+    # Teacher's schedule
+    stmt = (
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .where(
+            Timetable.is_active == True,
+            TimetableDetail.staff_id == req.staff_id,
+            TimetableDetail.timeslot_id.in_(list(timeslots_map.keys()))
+        )
+        .options(
+            selectinload(TimetableDetail.timetable),
+            selectinload(TimetableDetail.subject),
+            selectinload(TimetableDetail.classroom)
+        )
+    )
+    details = (await db.execute(stmt)).scalars().all()
+    if not details:
+        return {"recommendations": [], "auto_applied": False, "message": "Faculty has no classes scheduled on this date."}
+
+    # Existing substitutions
+    sub_res = await db.execute(select(Substitution).where(Substitution.date == req.date))
+    all_date_subs = sub_res.scalars().all()
+    existing_sub_map = {s.timetable_detail_id: s for s in all_date_subs if s.original_staff_id == req.staff_id}
+    busy_as_sub = {s.substitute_staff_id for s in all_date_subs}
+
+    # All staff & competencies
+    all_staff = (await db.execute(select(Staff).options(selectinload(Staff.subjects), selectinload(Staff.department)))).scalars().all()
+    
+    # Active timetable mappings for availability check
+    all_details = (await db.execute(
+        select(TimetableDetail)
+        .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+        .where(Timetable.is_active == True, TimetableDetail.timeslot_id.in_(list(timeslots_map.keys())))
+    )).scalars().all()
+    occupied_schedule = {(d.staff_id, d.timeslot_id): True for d in all_details}
+
+    # Workload counts
+    subs_counts_res = await db.execute(select(Substitution.substitute_staff_id, func.count(Substitution.id)).group_by(Substitution.substitute_staff_id))
+    workload_map = {staff_id: count for staff_id, count in subs_counts_res.all() if staff_id is not None}
+
+    recommendations = []
+    assigned_count = 0
+
+    for d in details:
+        ts = timeslots_map.get(d.timeslot_id)
+        if not ts:
+            continue
+
+        sec_res = await db.execute(select(Section).where(Section.id == d.timetable.section_id))
+        section = sec_res.scalar_one_or_none()
+        section_name = section.name if section else "General"
+
+        existing = existing_sub_map.get(d.id)
+        is_already_substituted = existing is not None
+
+        ranked_candidates = []
+        for st in all_staff:
+            if st.id == req.staff_id or st.status != "Active":
+                continue
+
+            # Availability
+            if occupied_schedule.get((st.id, d.timeslot_id), False) or st.id in busy_as_sub:
+                continue
+
+            # Scoring factors
+            score = 30  # Baseline for free availability
+            tags = ["Free Slot"]
+
+            # Subject qualification
+            is_subject_match = any(subj.id == d.subject_id for subj in st.subjects)
+            if is_subject_match:
+                score += 40
+                tags.append("Subject Specialist")
+
+            # Department match
+            orig_staff = next((s for s in all_staff if s.id == req.staff_id), None)
+            if orig_staff and orig_staff.department_id == st.department_id:
+                score += 15
+                tags.append("Same Department")
+
+            # Workload balance (fewer previous substitutions = higher preference)
+            current_subs = workload_map.get(st.id, 0)
+            workload_bonus = max(0, 15 - (current_subs * 3))
+            score += workload_bonus
+            if current_subs == 0:
+                tags.append("Optimal Workload")
+
+            final_score = min(99, score)
+            ranked_candidates.append({
+                "staff_id": st.id,
+                "name": st.name,
+                "email": st.email,
+                "department": st.department.name if st.department else "General",
+                "match_percentage": final_score,
+                "reasons": tags,
+                "current_sub_count": current_subs
+            })
+
+        # Sort highest match first
+        ranked_candidates.sort(key=lambda x: x["match_percentage"], reverse=True)
+        best_candidate = ranked_candidates[0] if ranked_candidates else None
+
+        # Auto-apply if requested and slot is not already substituted
+        if req.auto_apply and best_candidate and not is_already_substituted:
+            new_sub = Substitution(
+                date=req.date,
+                timeslot_id=d.timeslot_id,
+                original_staff_id=req.staff_id,
+                substitute_staff_id=best_candidate["staff_id"],
+                timetable_detail_id=d.id
+            )
+            db.add(new_sub)
+            busy_as_sub.add(best_candidate["staff_id"])
+            assigned_count += 1
+            is_already_substituted = True
+
+        recommendations.append({
+            "timetable_detail_id": d.id,
+            "period_number": ts.period_number,
+            "time_range": f"{ts.start_time.strftime('%H:%M')} - {ts.end_time.strftime('%H:%M')}",
+            "subject_name": d.subject.name if d.subject else "Class",
+            "subject_code": d.subject.code if d.subject else "",
+            "section_name": section_name,
+            "classroom_name": d.classroom.name if d.classroom else "N/A",
+            "is_substituted": is_already_substituted,
+            "best_match": best_candidate,
+            "all_candidates": ranked_candidates[:5]
+        })
+
+    if req.auto_apply and assigned_count > 0:
+        await db.commit()
+
+    return {
+        "staff_id": req.staff_id,
+        "date": req.date,
+        "day_order": target_day_of_week,
+        "total_periods": len(details),
+        "auto_applied": req.auto_apply,
+        "assigned_count": assigned_count,
+        "recommendations": recommendations,
+        "message": f"AI Engine evaluated {len(details)} periods. {assigned_count} optimal substitutes successfully assigned." if req.auto_apply else f"AI Engine generated recommendations for {len(details)} periods."
+    }
+
+
+# ==============================================================================
+# ULTRA UPGRADE 3: LIVE CAMPUS FLOOR MAP & REAL-TIME CLASSROOM OCCUPANCY
+# ==============================================================================
+
+@router.get("/occupancy/live")
+async def get_live_campus_occupancy(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Returns real-time occupancy, active lectures, countdowns, and room status
+    organized by campus building floor for the interactive Live Campus Floor Map.
+    """
+    from backend.app.models.models import Classroom, AcademicCalendarEvent
+    from backend.app.core.day_order import get_day_order_info
+
+    now = datetime.datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    current_time = now.time()
+
+    # Determine Day Order
+    cal_res_all = await db.execute(select(AcademicCalendarEvent).where(AcademicCalendarEvent.type == "holiday"))
+    db_holidays = [ev.date for ev in cal_res_all.scalars().all()]
+    do_info = get_day_order_info(today_str, db_holidays)
+    target_day = do_info["timetable_day"] or do_info["day_of_week_name"]
+
+    # Fetch all classrooms
+    rooms_res = await db.execute(select(Classroom).order_by(Classroom.room_number))
+    classrooms = rooms_res.scalars().all()
+
+    # Timeslots for today
+    ts_res = await db.execute(select(TimeSlot).where(TimeSlot.day_of_week == target_day, TimeSlot.slot_type == "Regular").order_by(TimeSlot.start_time))
+    timeslots = ts_res.scalars().all()
+
+    # Find active timeslot (or nearest current period)
+    active_ts = None
+    time_remaining_mins = 0
+    for ts in timeslots:
+        if ts.start_time <= current_time <= ts.end_time:
+            active_ts = ts
+            # Calculate time remaining
+            end_dt = datetime.datetime.combine(now.date(), ts.end_time)
+            time_remaining_mins = max(1, int((end_dt - now).total_seconds() / 60))
+            break
+
+    # If no active slot currently (e.g. before/after college or during break), take the first regular slot as reference
+    reference_ts = active_ts or (timeslots[0] if timeslots else None)
+
+    # Active timetable details for reference timeslot
+    occupied_rooms = {}
+    if reference_ts:
+        details_stmt = (
+            select(TimetableDetail)
+            .join(Timetable, TimetableDetail.timetable_id == Timetable.id)
+            .where(
+                Timetable.is_active == True,
+                TimetableDetail.timeslot_id == reference_ts.id
+            )
+            .options(
+                selectinload(TimetableDetail.subject),
+                selectinload(TimetableDetail.staff),
+                selectinload(TimetableDetail.classroom),
+                selectinload(TimetableDetail.timetable).selectinload(Timetable.section)
+            )
+        )
+        det_res = await db.execute(details_stmt)
+        for d in det_res.scalars().all():
+            if d.classroom_id:
+                occupied_rooms[d.classroom_id] = d
+
+    # Substitutions on this date
+    sub_map = {}
+    if reference_ts:
+        sub_res = await db.execute(
+            select(Substitution)
+            .where(Substitution.date == today_str, Substitution.timeslot_id == reference_ts.id)
+            .options(selectinload(Substitution.substitute_staff))
+        )
+        for s in sub_res.scalars().all():
+            sub_map[s.timetable_detail_id] = s
+
+    # Floor classifier helper
+    def classify_floor(room: Classroom) -> str:
+        r = (room.room_number or "").upper()
+        b = (room.building or "").upper()
+        if "LAB" in r or "TP" in r or "TECH" in r or "TP" in b or "LAB" in b:
+            return "Computer Lab Complex (Tech Park)"
+        elif room.floor == 2 or any(c in r for c in ["201", "202", "203", "204", "205", "206", "207", "208", "209", "F2", "2ND"]):
+            return "2nd Floor (Computing Hub)"
+        elif room.floor == 1 or any(c in r for c in ["101", "102", "103", "104", "105", "106", "107", "108", "109", "F1", "1ST"]):
+            return "1st Floor (Science Wing)"
+        else:
+            return "Ground Floor (Main Academic Block)"
+
+    grouped_floors: dict = {}
+    total_rooms = len(classrooms)
+    occupied_count = 0
+
+    for room in classrooms:
+        floor_name = classify_floor(room)
+        if floor_name not in grouped_floors:
+            grouped_floors[floor_name] = []
+
+        is_lab = "LAB" in (room.room_number or "").upper() or "LAB" in (room.building or "").upper()
+        room_type = "Lab" if is_lab else "Lecture Hall"
+        occupant_detail = occupied_rooms.get(room.id)
+
+        if occupant_detail:
+            occupied_count += 1
+            # Check if there is an active substitute teacher
+            sub_info = sub_map.get(occupant_detail.id)
+            staff_display = sub_info.substitute_staff.name if sub_info and sub_info.substitute_staff else (occupant_detail.staff.name if occupant_detail.staff else "Assigned Faculty")
+            is_substituted = sub_info is not None
+
+            room_data = {
+                "id": room.id,
+                "name": room.room_number,
+                "capacity": room.capacity,
+                "building": room.building,
+                "floor": room.floor,
+                "room_type": room_type,
+                "status": "LAB_SESSION" if is_lab else "OCCUPIED",
+                "is_occupied": True,
+                "is_lab": is_lab,
+                "subject": occupant_detail.subject.name if occupant_detail.subject else "Regular Class",
+                "subject_code": occupant_detail.subject.code if occupant_detail.subject else "",
+                "staff": staff_display,
+                "is_substituted": is_substituted,
+                "section": occupant_detail.timetable.section.name if occupant_detail.timetable and occupant_detail.timetable.section else "General",
+                "time_remaining_minutes": time_remaining_mins if active_ts else 45,
+                "period": reference_ts.period_number if reference_ts else 1
+            }
+        else:
+            room_data = {
+                "id": room.id,
+                "name": room.room_number,
+                "capacity": room.capacity,
+                "building": room.building,
+                "floor": room.floor,
+                "room_type": room_type,
+                "status": "VACANT",
+                "is_occupied": False,
+                "is_lab": is_lab,
+                "subject": None,
+                "staff": None,
+                "section": None,
+                "time_remaining_minutes": 0,
+                "period": reference_ts.period_number if reference_ts else 1
+            }
+
+        grouped_floors[floor_name].append(room_data)
+
+    floors_list = [{"floor_name": f_name, "rooms": rooms} for f_name, rooms in grouped_floors.items()]
+
+    return {
+        "date": today_str,
+        "day_order": target_day,
+        "is_holiday": do_info["is_holiday"],
+        "is_live_period": active_ts is not None,
+        "active_period": reference_ts.period_number if reference_ts else 1,
+        "active_time_range": f"{reference_ts.start_time.strftime('%H:%M')} - {reference_ts.end_time.strftime('%H:%M')}" if reference_ts else "College Hours",
+        "total_rooms": total_rooms,
+        "occupied_rooms": occupied_count,
+        "vacant_rooms": total_rooms - occupied_count,
+        "occupancy_rate": round((occupied_count / max(1, total_rooms)) * 100, 1),
+        "floors": floors_list
+    }
+
+
+

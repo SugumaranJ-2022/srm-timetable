@@ -19,6 +19,53 @@ class StopAfterFirstSolution(cp_model.CpSolverSolutionCallback):
     def on_solution_callback(self):
         self.StopSearch()
 
+def distribute_slots_hamilton(items_with_weights, total_slots):
+    """
+    Distributes total_slots among items proportionally to their weights
+    using the Largest Remainder Method (Hamilton method).
+    Guarantees sum(allocations) == total_slots and each item >= 1 if total_slots >= len(items).
+    """
+    n = len(items_with_weights)
+    if n == 0 or total_slots <= 0:
+        return {item: 0 for item, _ in items_with_weights}
+    
+    total_weight = sum(w for _, w in items_with_weights)
+    if total_weight <= 0:
+        total_weight = n
+        items_with_weights = [(item, 1) for item, _ in items_with_weights]
+
+    if total_slots >= n:
+        base = {item: 1 for item, _ in items_with_weights}
+        remaining_slots = total_slots - n
+        
+        quotas = []
+        for item, w in items_with_weights:
+            q = (w / total_weight) * remaining_slots
+            quotas.append((item, int(q), q - int(q)))
+        
+        allocations = {item: base[item] + int_q for item, int_q, _ in quotas}
+        allocated_so_far = sum(allocations.values())
+        needed = total_slots - allocated_so_far
+        
+        quotas.sort(key=lambda x: x[2], reverse=True)
+        for i in range(needed):
+            allocations[quotas[i][0]] += 1
+            
+        return allocations
+    else:
+        quotas = []
+        for item, w in items_with_weights:
+            q = (w / total_weight) * total_slots
+            quotas.append((item, int(q), q - int(q)))
+        
+        allocations = {item: int_q for item, int_q, _ in quotas}
+        allocated_so_far = sum(allocations.values())
+        needed = total_slots - allocated_so_far
+        quotas.sort(key=lambda x: x[2], reverse=True)
+        for i in range(needed):
+            allocations[quotas[i][0]] += 1
+        return allocations
+
 async def generate_timetable_csp(
     db: AsyncSession,
     academic_year: str,
@@ -294,21 +341,14 @@ async def generate_timetable_csp(
                     allocated += tgt
 
             rem_slots = max(0, free_slots_remaining - allocated)
-            total_non_proj_credits = sum(subjects_dict[ss.subject_id].credits for ss in non_proj_ss_list if ss.subject_id in subjects_dict)
-
             if non_proj_ss_list and rem_slots > 0:
-                allocated_non_proj = 0
-                for idx, ss in enumerate(non_proj_ss_list):
-                    sub = subjects_dict.get(ss.subject_id)
-                    if not sub:
-                        continue
-                    if idx == len(non_proj_ss_list) - 1:
-                        tgt = max(1, rem_slots - allocated_non_proj)
-                    else:
-                        prop = sub.credits / total_non_proj_credits if total_non_proj_credits > 0 else 1.0 / len(non_proj_ss_list)
-                        tgt = max(1, int(round(prop * rem_slots)))
-                        allocated_non_proj += tgt
-                    targets[ss.subject_id] = tgt
+                items_with_weights = [
+                    (ss.subject_id, subjects_dict[ss.subject_id].credits)
+                    for ss in non_proj_ss_list if ss.subject_id in subjects_dict
+                ]
+                distributed = distribute_slots_hamilton(items_with_weights, rem_slots)
+                for sub_id, tgt in distributed.items():
+                    targets[sub_id] = tgt
         else:
             for ss in regular_ss_list:
                 sub = subjects_dict.get(ss.subject_id)
@@ -365,7 +405,13 @@ async def generate_timetable_csp(
             has_project = s.enable_project_cadence and (day in configured_project_days)
             avail_for_regular = 5 - num_pre_on_day - (1 if has_project else 0)
 
-            heavy_subs = [ss for ss in ss_list if not subjects_dict[ss.subject_id].is_project and targets.get(ss.subject_id, subjects_dict[ss.subject_id].credits) >= 5]
+            def get_effective_tgt(ss_obj):
+                num_p = sum(1 for ps in sec_pre_slots if ps.subject_id == ss_obj.subject_id)
+                if num_p > 0:
+                    return num_p
+                return targets.get(ss_obj.subject_id, subjects_dict[ss_obj.subject_id].credits)
+
+            heavy_subs = [ss for ss in ss_list if not subjects_dict[ss.subject_id].is_project and get_effective_tgt(ss) >= 5]
             can_require_daily_coverage = len(heavy_subs) <= avail_for_regular
 
             for ss in ss_list:
@@ -374,7 +420,7 @@ async def generate_timetable_csp(
                 if not day_sub_vars:
                     continue
 
-                tgt_p = targets.get(ss.subject_id, sub.credits)
+                tgt_p = get_effective_tgt(ss)
                 if not sub.is_project and tgt_p >= 5:
                     if s.enable_daily_coverage and can_require_daily_coverage:
                         # Rule 8: Subjects with 5+ periods appear at least once every day

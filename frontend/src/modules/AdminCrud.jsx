@@ -7,8 +7,23 @@ import {
   Lock, Unlock, Send, Sparkles, Globe, Check, Pencil
 } from 'lucide-react';
 
-const AdminCrud = () => {
-  const [activeTab, setActiveTab] = useState('ug_prealloc');
+const VALID_SUB_TABS = ['ug_prealloc', 'staff', 'classrooms', 'subjects', 'sections', 'mappings'];
+
+const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
+  const [activeTab, setActiveTabState] = useState(() => {
+    return initialSubTab && VALID_SUB_TABS.includes(initialSubTab) ? initialSubTab : 'ug_prealloc';
+  });
+
+  useEffect(() => {
+    if (initialSubTab && VALID_SUB_TABS.includes(initialSubTab) && initialSubTab !== activeTab) {
+      setActiveTabState(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    if (onSubTabChange) onSubTabChange(tab);
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -80,6 +95,7 @@ const AdminCrud = () => {
 
   // Single Record Edit Modal State
   const [editModal, setEditModal] = useState({ isOpen: false, tab: '', item: null, form: {} });
+
 
   // Load resources
   const loadData = async () => {
@@ -1331,9 +1347,8 @@ const AdminCrud = () => {
                     <button
                       onClick={handleGenerateTimetables}
                       disabled={loading}
-                      className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md"
+                      className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center justify-center transition-all shadow-md"
                     >
-                      <Sparkles className="w-4 h-4" />
                       Generate Master Timetable (Fill Free Spaces)
                     </button>
                   </div>

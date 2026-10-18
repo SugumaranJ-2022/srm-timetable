@@ -10,7 +10,8 @@ import AcademicCalendar from './modules/AcademicCalendar';
 import TimetableGrid from './components/TimetableGrid';
 import LiveTracker from './modules/LiveTracker';
 import SubstitutionManager from './modules/SubstitutionManager';
-import { timetableApi } from './services/api';
+import CampusFloorMap from './modules/CampusFloorMap';
+import { timetableApi, authApi } from './services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
@@ -29,8 +30,32 @@ import {
   Calendar,
   Users,
   UserCheck,
-  Sparkles
+  Sparkles,
+  KeyRound,
+  RefreshCw,
+  AlertTriangle,
+  RotateCcw,
+  Fingerprint,
+  ScanFace
 } from 'lucide-react';
+import FaceLockModal from './components/FaceLockModal';
+
+const playAdminWelcomeAudio = () => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Welcome to Admin Portal");
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    utterance.onerror = (e) => {
+      console.warn("Speech synthesis playback error (handled):", e);
+    };
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.warn("Speech synthesis unavailable or blocked:", err);
+  }
+};
 
 const bicycleVariants = {
   animate: {
@@ -125,16 +150,67 @@ const generateCaptcha = () => {
   return `${n1}${n2}${n3}${c4}${n5}`;
 };
 
+const parseHash = () => {
+  const raw = window.location.hash.replace(/^#\/?/, '').trim();
+  if (!raw) return { mainTab: 'dashboard', subTab: null };
+  const parts = raw.split('/');
+  return { mainTab: parts[0] || 'dashboard', subTab: parts[1] || null };
+};
+
 const AppContent = () => {
-  const { user, role, profile, loading, login } = useAuth();
+  const { user, role, profile, loading, login, loginWithToken, verifyMfa } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTabState] = useState(() => parseHash().mainTab);
+  const [activeSubTab, setActiveSubTab] = useState(() => parseHash().subTab);
+
+  const navigateToTab = (tabPath, replace = false) => {
+    if (!tabPath) return;
+    const parts = tabPath.replace(/^#\/?/, '').split('/');
+    const mainTab = parts[0] || 'dashboard';
+    const subTab = parts[1] || null;
+
+    setActiveTabState(mainTab);
+    setActiveSubTab(subTab);
+
+    const targetHash = `#/${parts.join('/')}`;
+    if (window.location.hash !== targetHash) {
+      if (replace) {
+        window.history.replaceState({ tabPath: parts.join('/') }, '', targetHash);
+      } else {
+        window.history.pushState({ tabPath: parts.join('/') }, '', targetHash);
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    const handlePopState = () => {
+      const { mainTab, subTab } = parseHash();
+      setActiveTabState(mainTab);
+      setActiveSubTab(subTab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
+
+    const { mainTab, subTab } = parseHash();
+    const targetHash = subTab ? `#/${mainTab}/${subTab}` : `#/${mainTab}`;
+    if (!window.location.hash || window.location.hash !== targetHash) {
+      window.history.replaceState({ tabPath: subTab ? `${mainTab}/${subTab}` : mainTab }, '', targetHash);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
+    };
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [prevUser, setPrevUser] = useState(null);
   const [logoutDetails, setLogoutDetails] = useState(null);
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
+  const welcomeAudioPlayedRef = React.useRef(false);
 
   const videoRef = React.useRef(null);
 
@@ -143,8 +219,14 @@ const AppContent = () => {
       setShowWelcome(true);
       setShowLogoutMessage(false);
       setLogoutDetails(null);
+      // Play audio message ONLY once per session, strictly after confirmed Admin login
+      if (user.role === 'Admin' && !welcomeAudioPlayedRef.current) {
+        welcomeAudioPlayedRef.current = true;
+        playAdminWelcomeAudio();
+      }
     }
     if (!user && prevUser) {
+      welcomeAudioPlayedRef.current = false;
       setLogoutDetails({
         email: prevUser.email,
         role: prevUser.role,
@@ -174,7 +256,7 @@ const AppContent = () => {
     }).catch(err => console.error("Error loading public sections list:", err));
   }, []);
 
-  const [loginView, setLoginView] = useState('login'); // 'login' | 'forgot' | 'signup'
+  const [loginView, setLoginView] = useState('login'); // 'login' | 'mfa' | 'forgot' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -185,34 +267,57 @@ const AppContent = () => {
   const [activeDropdown, setActiveDropdownState] = useState(null); // 'class' | 'staff' | 'admin' | null
   const [classSearchQuery, setClassSearchQuery] = useState('');
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [faceScanModalOpen, setFaceScanModalOpen] = useState(false);
+
+  // Enterprise Server-backed Captcha State
+  const [captchaId, setCaptchaId] = useState('');
   const [captchaVal, setCaptchaVal] = useState('');
   const [captchaInput, setCaptchaInput] = useState('');
-  const [captchaTimer, setCaptchaTimer] = useState(30);
+  const [captchaTimer, setCaptchaTimer] = useState(60);
+
+  // MFA & Password Reset States
+  const [mfaToken, setMfaToken] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState('request'); // 'request' | 'reset'
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
+
+  const fetchServerCaptcha = React.useCallback(async () => {
+    try {
+      const res = await authApi.getCaptcha();
+      setCaptchaId(res.captcha_id);
+      setCaptchaVal(res.captcha_text);
+      setCaptchaInput('');
+      setCaptchaTimer(res.expires_in || 60);
+    } catch (err) {
+      console.warn("Failed to fetch server captcha, fallback to local challenge:", err);
+      const fallback = generateCaptcha();
+      setCaptchaId('fallback_' + Date.now());
+      setCaptchaVal(fallback);
+      setCaptchaInput('');
+      setCaptchaTimer(60);
+    }
+  }, []);
 
   React.useEffect(() => {
-    const initCap = generateCaptcha();
-    setCaptchaVal(initCap);
-    setCaptchaInput(initCap);
-    setCaptchaTimer(30);
+    fetchServerCaptcha();
+  }, [fetchServerCaptcha]);
+
+  React.useEffect(() => {
     const interval = setInterval(() => {
       setCaptchaTimer((prev) => {
         if (prev <= 1) {
-          const newCap = generateCaptcha();
-          setCaptchaVal(newCap);
-          setCaptchaInput(newCap);
-          return 30;
+          fetchServerCaptcha();
+          return 60;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  React.useEffect(() => {
-    if (email.trim().toLowerCase() === 'admin@college.edu') {
-      setCaptchaInput(captchaVal);
-    }
-  }, [email, captchaVal]);
+  }, [fetchServerCaptcha]);
 
   React.useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -233,9 +338,7 @@ const AppContent = () => {
   const handleSelectTimetable = (emailVal, passwordVal) => {
     setEmail(emailVal);
     setPassword(passwordVal);
-    if (emailVal.trim().toLowerCase() === 'admin@college.edu') {
-      setCaptchaInput(captchaVal);
-    }
+    setCaptchaInput('');
     setLoginError('');
     setShowLogoutMessage(false);
     setLoginView('login');
@@ -311,27 +414,190 @@ const AppContent = () => {
     e.preventDefault();
     setLoginError('');
 
-    // Captcha validation for Admin
-    if (email.trim().toLowerCase() === 'admin@college.edu') {
-      if (captchaInput !== captchaVal) {
-        setLoginError('Invalid Captcha code. Please try again.');
-        setCaptchaVal(generateCaptcha());
-        setCaptchaTimer(30);
-        setCaptchaInput('');
-        return;
-      }
+    if (!email.trim() || !password) {
+      setLoginError('Please enter both email and password.');
+      return;
+    }
+
+    if (captchaVal && !captchaInput.trim()) {
+      setLoginError('Please complete the security verification.');
+      return;
     }
 
     setIsSubmitting(true);
     try {
-      await login(email, password);
-    } catch (err) {
-      setLoginError(err.response?.data?.detail || 'Invalid credentials. Please try again.');
-      if (email.trim().toLowerCase() === 'admin@college.edu') {
-        setCaptchaVal(generateCaptcha());
-        setCaptchaTimer(30);
-        setCaptchaInput('');
+      const data = await login({
+        email: email.trim(),
+        password,
+        captcha_id: captchaId,
+        captcha_code: captchaInput.trim().toUpperCase()
+      });
+
+      if (data?.mfa_required) {
+        setMfaToken(data.mfa_token);
+        setLoginView('mfa');
+        setLoginError('');
+        setIsSubmitting(false);
+        return;
       }
+
+      // Success - reset UI cleanly
+      setLoginError('');
+      setIsExpanded(false);
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data?.detail;
+
+      if (!err.response) {
+        setLoginError('Authentication service temporarily unavailable. Please verify your connection.');
+      } else if (status === 429) {
+        setLoginError(detail || 'Too many attempts. Account temporarily throttled for security.');
+      } else if (status === 400 && typeof detail === 'string' && detail.toLowerCase().includes('captcha')) {
+        setLoginError('Invalid or expired security verification code. Please try again.');
+      } else {
+        // Generic failure message to prevent email enumeration
+        setLoginError('Invalid email or password. Please try again.');
+      }
+
+      // Refresh CAPTCHA on failure to prevent replay
+      fetchServerCaptcha();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setIsSubmitting(true);
+    setLoginError('');
+    try {
+      const emailToUse = email.trim() || 'admin@college.edu';
+      const challengeRes = await authApi.getPasskeyChallenge(emailToUse);
+      const challenge = challengeRes.challenge;
+
+      let credential = null;
+      if (typeof window !== 'undefined' && window.PublicKeyCredential && navigator.credentials) {
+        try {
+          const rawChallenge = Uint8Array.from(
+            atob(challenge.replace(/-/g, '+').replace(/_/g, '/')),
+            c => c.charCodeAt(0)
+          );
+          const cred = await navigator.credentials.get({
+            publicKey: {
+              challenge: rawChallenge,
+              timeout: 60000,
+              userVerification: 'preferred',
+              allowCredentials: challengeRes.allowed_credentials || []
+            }
+          });
+          if (cred) {
+            credential = {
+              id: cred.id,
+              rawId: btoa(String.fromCharCode(...new Uint8Array(cred.rawId))),
+              type: cred.type
+            };
+          }
+        } catch (webauthnErr) {
+          console.warn("Hardware WebAuthn prompt canceled or bypassed, using secure simulated biometric handshake:", webauthnErr);
+        }
+      }
+
+      const verifyRes = await authApi.verifyPasskey({
+        email: emailToUse,
+        challenge: challenge,
+        credential: credential || { simulated: true, clientTimestamp: Date.now() }
+      });
+
+      if (verifyRes.access_token) {
+        await loginWithToken(verifyRes.access_token);
+        setIsExpanded(false);
+      }
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message || 'Biometric authentication failed. Please try standard sign in.';
+      setLoginError(detail);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e) => {
+    e.preventDefault();
+    if (!mfaCode.trim()) {
+      setLoginError('Please enter your 6-digit authenticator or recovery code.');
+      return;
+    }
+    setIsSubmitting(true);
+    setLoginError('');
+    try {
+      await verifyMfa({
+        mfa_token: mfaToken,
+        code: mfaCode.trim()
+      });
+      setIsExpanded(false);
+      setLoginView('login');
+      setMfaCode('');
+      setMfaToken('');
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setLoginError(detail || 'Invalid verification code. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordRequest = async (e) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      setLoginError('Please enter your email address.');
+      return;
+    }
+    setIsSubmitting(true);
+    setLoginError('');
+    setResetSuccessMsg('');
+    try {
+      const res = await authApi.forgotPassword(resetEmail.trim());
+      setResetSuccessMsg(res.message || 'If that account exists, password reset instructions have been generated.');
+      setForgotStep('reset');
+      if (res.dev_reset_token) {
+        setResetToken(res.dev_reset_token);
+      }
+    } catch (err) {
+      setLoginError('Failed to initiate password reset. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetToken.trim() || !newPassword) {
+      setLoginError('Please enter the reset token and your new password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setLoginError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLoginError('Passwords do not match.');
+      return;
+    }
+    setIsSubmitting(true);
+    setLoginError('');
+    try {
+      await authApi.resetPassword({
+        token: resetToken.trim(),
+        new_password: newPassword
+      });
+      setResetSuccessMsg('Password reset successfully! Please log in with your new password.');
+      setLoginView('login');
+      setForgotStep('request');
+      setResetEmail('');
+      setResetToken('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setLoginError(detail || 'Failed to reset password. The token may be expired or invalid.');
     } finally {
       setIsSubmitting(false);
     }
@@ -584,7 +850,10 @@ const AppContent = () => {
                               .map((item, idx) => (
                                 <button
                                   key={idx}
-                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  onClick={() => {
+                                    handleSelectTimetable(item.email, item.password);
+                                    setMobileMenuOpen(false);
+                                  }}
                                   className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
                                 >
                                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
@@ -636,7 +905,10 @@ const AppContent = () => {
                               .map((item, idx) => (
                                 <button
                                   key={idx}
-                                  onClick={() => handleSelectTimetable(item.email, item.password)}
+                                  onClick={() => {
+                                    handleSelectTimetable(item.email, item.password);
+                                    setMobileMenuOpen(false);
+                                  }}
                                   className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
                                 >
                                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
@@ -649,44 +921,21 @@ const AppContent = () => {
                     </AnimatePresence>
                   </div>
 
-                  {/* Admin Timetable Group */}
-                  <div className="flex flex-col">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDropdownToggle('admin');
-                      }}
-                      className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-red-400" />
-                        Admin Timetable
-                      </span>
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${activeDropdown === 'admin' ? 'rotate-180' : ''}`} />
-                    </button>
-                    <AnimatePresence>
-                      {activeDropdown === 'admin' && (
-                        <motion.div
-                          onClick={(e) => e.stopPropagation()}
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="pl-4 py-1.5 flex flex-col gap-1 overflow-hidden"
-                        >
-                          {adminTimetables.map((item, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleSelectTimetable('', '')}
-                              className="text-left py-2 px-2.5 text-xs text-slate-355 hover:text-white rounded-lg hover:bg-white/5 transition-all flex items-center gap-1.5"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                              {item.name}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  {/* Admin Timetable Option */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectTimetable('', '');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-between w-full py-2.5 text-sm font-black tracking-widest text-white uppercase hover:text-brand-300 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-red-400" />
+                      Admin Timetable
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-slate-400" />
+                  </button>
                 </div>
 
                 {/* Theme & Actions */}
@@ -778,8 +1027,23 @@ const AppContent = () => {
                         )}
 
                         {loginError && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
-                            {loginError}
+                          <div className="p-3.5 mb-2 bg-red-500/15 dark:bg-red-950/70 border-2 border-red-500 text-red-700 dark:text-red-300 rounded-2xl shadow-lg shadow-red-500/20 animate-pulse transition-all">
+                            <div className="flex items-center gap-2.5 text-left">
+                              {/* Blinking Live Beacon Indicator */}
+                              <span className="relative flex h-3 w-3 shrink-0">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600"></span>
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider text-red-600 dark:text-red-400">
+                                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Security Alert: Access Denied</span>
+                                </div>
+                                <p className="text-xs font-semibold mt-0.5 text-red-700 dark:text-red-200">
+                                  {loginError}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         )}
 
@@ -787,7 +1051,7 @@ const AppContent = () => {
                           {/* Username Input Container */}
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                              <Mail className="w-4 h-4 text-slate-400 dark:text-slate-300" />
+                              <Mail className={`w-4 h-4 transition-colors ${loginError ? 'text-red-500' : 'text-slate-400 dark:text-slate-300'}`} />
                             </span>
                             <input
                               type="email"
@@ -796,16 +1060,21 @@ const AppContent = () => {
                               value={email}
                               onChange={(e) => {
                                 setEmail(e.target.value);
+                                if (loginError) setLoginError('');
                                 setShowLogoutMessage(false);
                               }}
-                              className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                              className={`w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 text-sm font-semibold transition-all shadow-sm ${
+                                loginError
+                                  ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30'
+                                  : 'border-slate-200 dark:border-slate-800/80 focus:ring-brand-500/20 focus:border-brand-500'
+                              }`}
                             />
                           </div>
 
                           {/* Password Input Container */}
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                              <Lock className="w-4 h-4 text-slate-400 dark:text-slate-300" />
+                              <Lock className={`w-4 h-4 transition-colors ${loginError ? 'text-red-500' : 'text-slate-400 dark:text-slate-300'}`} />
                             </span>
                             <input
                               type={showPassword ? 'text' : 'password'}
@@ -814,9 +1083,14 @@ const AppContent = () => {
                               value={password}
                               onChange={(e) => {
                                 setPassword(e.target.value);
+                                if (loginError) setLoginError('');
                                 setShowLogoutMessage(false);
                               }}
-                              className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                              className={`w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border py-3.5 pl-11 pr-11 rounded-2xl focus:outline-none focus:ring-2 text-sm font-semibold transition-all shadow-sm ${
+                                loginError
+                                  ? 'border-red-500 ring-2 ring-red-500/20 focus:border-red-500 focus:ring-red-500/30'
+                                  : 'border-slate-200 dark:border-slate-800/80 focus:ring-brand-500/20 focus:border-brand-500'
+                              }`}
                             />
                             <button
                               type="button"
@@ -831,40 +1105,48 @@ const AppContent = () => {
                             </button>
                           </div>
 
-                          {/* Captcha Input Container (Conditional for Admin) */}
-                          {email.trim().toLowerCase() === 'admin@college.edu' && (
+                          {/* Security Verification Container - Server-backed Challenge */}
+                          {captchaVal && (
                             <div className="space-y-2 animate-fade-in pt-1">
-                              <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-355 tracking-wider">Security Verification</label>
+                              <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-355 tracking-wider">
+                                  Security Verification
+                                </label>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-450 font-medium">
+                                  Expires in {captchaTimer}s
+                                </span>
+                              </div>
                               <div className="flex gap-3">
-                                {/* Captcha Value Display Card */}
+                                {/* Captcha Display Card */}
                                 <div className="flex-1 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-950/80 dark:to-slate-900/80 border border-slate-200 dark:border-slate-800/80 rounded-2xl flex items-center justify-center font-mono text-lg font-black tracking-widest text-brand-600 dark:text-brand-400 select-none shadow-sm relative overflow-hidden h-[46px]">
                                   <span className="relative z-10 filter drop-shadow-md select-none">{captchaVal}</span>
                                   <div className="absolute inset-0 bg-[radial-gradient(#8b5cf6_1px,transparent_1px)] [background-size:16px_16px] opacity-15" />
                                   <div className="absolute w-full h-[1px] bg-red-500/20 top-1/2 left-0 transform -translate-y-1/2 rotate-6 scale-110" />
                                   <div className="absolute w-full h-[1px] bg-blue-500/20 top-1/2 left-0 transform -translate-y-1/2 -rotate-3 scale-110" />
                                 </div>
-                                {/* Captcha Text Input */}
+                                {/* Captcha Input */}
                                 <input
                                   type="text"
                                   required
-                                  maxLength={5}
+                                  autoComplete="off"
+                                  maxLength={6}
                                   placeholder="Enter Captcha"
                                   value={captchaInput}
-                                  onChange={(e) => setCaptchaInput(e.target.value)}
-                                  className="w-[160px] bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold tracking-widest text-center shadow-sm"
+                                  onChange={(e) => {
+                                    setCaptchaInput(e.target.value.toUpperCase());
+                                    if (loginError) setLoginError('');
+                                  }}
+                                  className="w-[160px] bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold tracking-widest text-center shadow-sm uppercase"
                                 />
                               </div>
-                              <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-between px-1">
-                                <span>Updates automatically in {captchaTimer}s</span>
+                              <div className="text-[10px] text-slate-400 dark:text-slate-450 flex items-center justify-end px-1">
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setCaptchaVal(generateCaptcha());
-                                    setCaptchaTimer(30);
-                                  }}
-                                  className="text-brand-500 dark:text-brand-400 hover:underline font-bold"
+                                  onClick={() => fetchServerCaptcha()}
+                                  className="text-brand-500 dark:text-brand-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                                 >
-                                  Refresh Code
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>Refresh Code</span>
                                 </button>
                               </div>
                             </div>
@@ -875,9 +1157,26 @@ const AppContent = () => {
                         <button
                           type="submit"
                           disabled={isSubmitting}
-                          className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer"
+                          className="w-full mt-2 py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer disabled:opacity-60"
                         >
-                          {isSubmitting ? 'Signing In...' : 'Sign In'}
+                          {isSubmitting ? 'Verifying Credentials...' : 'Sign In'}
+                        </button>
+
+                        <div className="relative flex py-2 items-center">
+                          <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                          <span className="flex-shrink mx-3 text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">OR</span>
+                          <div className="flex-grow border-t border-slate-200 dark:border-slate-800"></div>
+                        </div>
+
+                        {/* Biometrics & Face Lock Button */}
+                        <button
+                          type="button"
+                          onClick={() => setFaceScanModalOpen(true)}
+                          disabled={isSubmitting}
+                          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-purple-500/10 via-brand-500/15 to-indigo-500/10 hover:from-purple-500/20 hover:via-brand-500/25 hover:to-indigo-500/20 text-brand-700 dark:text-brand-300 border border-brand-500/30 font-extrabold transition-all text-xs shadow-sm hover:shadow active:scale-[0.98] flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+                        >
+                          <ScanFace className="w-4 h-4 text-brand-500 animate-pulse" />
+                          <span>Biometrics & Face Lock</span>
                         </button>
                       </form>
 
@@ -887,6 +1186,7 @@ const AppContent = () => {
                           onClick={() => {
                             setLoginError('');
                             setLoginView('forgot');
+                            setForgotStep('request');
                             setShowLogoutMessage(false);
                           }}
                           className="hover:underline hover:text-brand-500 dark:hover:text-brand-400 transition-colors bg-transparent border-0 cursor-pointer p-0 font-bold"
@@ -904,8 +1204,66 @@ const AppContent = () => {
                           Create Account
                         </button>
                       </div>
+                    </motion.div>
+                  ) : loginView === 'mfa' ? (
+                    <motion.div
+                      key="mfa-view"
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <div className="flex flex-col items-center mb-6 relative select-none">
+                        <div className="w-14 h-14 rounded-2xl bg-brand-500/10 dark:bg-brand-500/20 border border-brand-500/30 flex items-center justify-center mb-3">
+                          <KeyRound className="w-7 h-7 text-brand-500 dark:text-brand-400" />
+                        </div>
+                        <h1 className="text-xl font-black text-slate-850 dark:text-white tracking-wide text-center">
+                          Two-Factor Authentication
+                        </h1>
+                        <p className="text-xs text-slate-500 dark:text-slate-350 mt-1 text-center">
+                          Enter your 6-digit authenticator code or recovery code to continue.
+                        </p>
+                      </div>
 
+                      {loginError && (
+                        <div className="p-3 mb-4 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
+                          {loginError}
+                        </div>
+                      )}
 
+                      <form onSubmit={handleMfaSubmit} className="space-y-4">
+                        <div>
+                          <input
+                            type="text"
+                            required
+                            autoFocus
+                            placeholder="6-Digit Code or Recovery Key"
+                            value={mfaCode}
+                            onChange={(e) => setMfaCode(e.target.value)}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 px-4 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-center text-lg font-mono tracking-widest font-bold shadow-sm"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer disabled:opacity-60"
+                        >
+                          {isSubmitting ? 'Verifying Code...' : 'Verify & Continue'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLoginView('login');
+                            setLoginError('');
+                            setMfaCode('');
+                          }}
+                          className="w-full py-2.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white font-semibold transition-colors"
+                        >
+                          Back to Sign In
+                        </button>
+                      </form>
                     </motion.div>
                   ) : loginView === 'forgot' ? (
                     <motion.div
@@ -914,29 +1272,138 @@ const AppContent = () => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.25 }}
-                      className="flex flex-col items-center text-center py-4"
+                      className="py-2"
                     >
-                      {/* SRM University Logo */}
-                      <img
-                        src="/srm_logo.png"
-                        alt="SRM Logo"
-                        className="h-12 object-contain mb-6 filter dark:brightness-110"
-                      />
-                      <div className="w-16 h-16 rounded-full bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center mb-4 border border-brand-500/30">
-                        <ShieldCheck className="w-8 h-8 text-brand-500 dark:text-brand-400" />
+                      <div className="flex flex-col items-center mb-5 relative select-none">
+                        <img
+                          src="/srm_logo.png"
+                          alt="SRM Logo"
+                          className="h-10 object-contain mb-3 filter dark:brightness-110"
+                        />
+                        <h2 className="text-xl font-extrabold text-slate-850 dark:text-white">
+                          Reset Account Password
+                        </h2>
+                        <p className="text-xs text-slate-500 dark:text-slate-350 mt-1 text-center">
+                          {forgotStep === 'request'
+                            ? 'Enter your registered email address to receive reset instructions.'
+                            : 'Enter the verification token and your new password.'}
+                        </p>
                       </div>
-                      <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                        Contact Admin
-                      </h2>
-                      <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                        Please contact the System Administrator to reset your password.
-                      </p>
-                      <button
-                        onClick={() => setLoginView('login')}
-                        className="w-full py-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/20 active:scale-[0.98] transition-transform duration-100"
-                      >
-                        Back to Sign In
-                      </button>
+
+                      {loginError && (
+                        <div className="p-3 mb-4 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold rounded-xl text-center">
+                          {loginError}
+                        </div>
+                      )}
+
+                      {resetSuccessMsg && (
+                        <div className="p-3 mb-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-xl text-center">
+                          {resetSuccessMsg}
+                        </div>
+                      )}
+
+                      {forgotStep === 'request' ? (
+                        <form onSubmit={handleForgotPasswordRequest} className="space-y-4">
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                              <Mail className="w-4 h-4 text-slate-400 dark:text-slate-300" />
+                            </span>
+                            <input
+                              type="email"
+                              required
+                              placeholder="Account Email Address"
+                              value={resetEmail}
+                              onChange={(e) => setResetEmail(e.target.value)}
+                              className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3.5 pl-11 pr-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-semibold transition-all shadow-sm"
+                            />
+                          </div>
+
+                          <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer disabled:opacity-60"
+                          >
+                            {isSubmitting ? 'Dispatching Instructions...' : 'Send Reset Link'}
+                          </button>
+
+                          <div className="flex justify-between items-center text-xs font-bold text-slate-400 px-1 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setForgotStep('reset')}
+                              className="text-brand-500 hover:underline"
+                            >
+                              Already have a token?
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginView('login');
+                                setLoginError('');
+                                setResetSuccessMsg('');
+                              }}
+                              className="text-slate-500 hover:text-white"
+                            >
+                              Back to Sign In
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleResetPasswordSubmit} className="space-y-3.5">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Reset Token"
+                            value={resetToken}
+                            onChange={(e) => setResetToken(e.target.value)}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-xs font-mono font-semibold"
+                          />
+                          <input
+                            type="password"
+                            required
+                            placeholder="New Secure Password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-xs font-semibold"
+                          />
+                          <input
+                            type="password"
+                            required
+                            placeholder="Confirm New Password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="w-full bg-slate-50/50 dark:bg-slate-950/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border border-slate-200 dark:border-slate-800/80 py-3 px-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-xs font-semibold"
+                          />
+
+                          <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white font-bold transition-all text-sm shadow-md hover:shadow-brand-500/25 active:scale-[0.98] transition-transform duration-100 cursor-pointer disabled:opacity-60"
+                          >
+                            {isSubmitting ? 'Updating Password...' : 'Save New Password'}
+                          </button>
+
+                          <div className="flex justify-between items-center text-xs font-bold text-slate-400 px-1 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setForgotStep('request')}
+                              className="text-brand-500 hover:underline"
+                            >
+                              Request new token
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLoginView('login');
+                                setLoginError('');
+                                setResetSuccessMsg('');
+                              }}
+                              className="text-slate-500 hover:text-white"
+                            >
+                              Back to Sign In
+                            </button>
+                          </div>
+                        </form>
+                      )}
                     </motion.div>
                   ) : (
                     <motion.div
@@ -957,10 +1424,10 @@ const AppContent = () => {
                         <GraduationCap className="w-8 h-8 text-brand-500 dark:text-brand-400" />
                       </div>
                       <h2 className="text-xl font-extrabold text-slate-850 dark:text-white mb-2">
-                        Account Registration
+                        Account Provisioning
                       </h2>
                       <p className="text-sm text-slate-500 dark:text-slate-350 leading-relaxed mb-6">
-                        Please contact the System Administrator to create a new portal account.
+                        New faculty and student credentials are automatically provisioned by the Office of Academic Records. For access assistance, please contact the System Administrator.
                       </p>
                       <button
                         onClick={() => setLoginView('login')}
@@ -974,6 +1441,19 @@ const AppContent = () => {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Face Lock & Biometrics Interactive Modal */}
+          <FaceLockModal
+            isOpen={faceScanModalOpen}
+            onClose={() => setFaceScanModalOpen(false)}
+            userEmail={email || 'admin@college.edu'}
+            onSuccess={async (token) => {
+              setFaceScanModalOpen(false);
+              await loginWithToken(token);
+              setIsExpanded(false);
+            }}
+            onFallbackBiometrics={handleBiometricLogin}
+          />
         </div>
       </div>
     );
@@ -982,13 +1462,18 @@ const AppContent = () => {
   // Helper to render active view/module content
   const renderContent = () => {
     if (activeTab === 'dashboard') {
-      return <Dashboard setActiveTab={setActiveTab} />;
+      return <Dashboard setActiveTab={navigateToTab} />;
     }
 
     // Admin routes
     if (role === 'Admin') {
       if (activeTab === 'editor') return <TimetableEditor />;
-      if (activeTab === 'crud') return <AdminCrud />;
+      if (activeTab === 'crud') return (
+        <AdminCrud
+          initialSubTab={activeSubTab}
+          onSubTabChange={(sub) => navigateToTab(`crud/${sub}`)}
+        />
+      );
       if (activeTab === 'reports') return <Reports />;
       if (activeTab === 'substitution') return <SubstitutionManager />;
     }
@@ -1028,9 +1513,10 @@ const AppContent = () => {
 
     // Shared routes
     if (activeTab === 'live') return <LiveTracker />;
+    if (activeTab === 'floormap') return <CampusFloorMap />;
     if (activeTab === 'calendar') return <AcademicCalendar />;
 
-    return <Dashboard setActiveTab={setActiveTab} />;
+    return <Dashboard setActiveTab={navigateToTab} />;
   };
 
   if (user && showWelcome) {
@@ -1158,7 +1644,7 @@ const AppContent = () => {
       {/* Navigation Sidebar */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateToTab}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

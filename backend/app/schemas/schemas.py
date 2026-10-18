@@ -1,6 +1,10 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator, computed_field
 from typing import List, Optional
 from datetime import time, datetime
+import re
+
+# Flexible email type allowing dummy development domains like .local
+EmailStr = str
 
 # Token & Auth Schemas
 class Token(BaseModel):
@@ -13,7 +17,15 @@ class TokenData(BaseModel):
     user_id: Optional[int] = None
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str = Field(..., description="Email address, supports dev test domains like .local")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if "@" not in v or "." not in v.split("@")[-1]:
+            raise ValueError("Invalid email address format.")
+        return v
 
 class UserCreate(UserBase):
     password: str
@@ -22,6 +34,8 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: int
     role: str
+    is_active: bool = True
+    mfa_enabled: bool = False
     created_at: datetime
     
     model_config = ConfigDict(from_attributes=True)
@@ -335,5 +349,105 @@ class LiveStatusResponse(BaseModel):
     faculty: List[FacultyLiveStatus]
     is_holiday: bool = False
     holiday_title: Optional[str] = None
+
+
+# Enterprise Security & Auth Schemas
+class CaptchaResponse(BaseModel):
+    captcha_id: str
+    captcha_text: str
+    expires_in: int
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=1)
+    captcha_id: Optional[str] = None
+    captcha_code: Optional[str] = None
+    mfa_code: Optional[str] = None
+
+
+class LoginResponse(BaseModel):
+    access_token: Optional[str] = None
+    token_type: Optional[str] = "bearer"
+    mfa_required: bool = False
+    mfa_token: Optional[str] = None
+    user: Optional[UserOut] = None
+
+
+class MFASetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    recovery_codes: List[str]
+
+
+class MFAVerifyRequest(BaseModel):
+    code: str
+    mfa_token: Optional[str] = None
+
+
+class MFAEnableRequest(BaseModel):
+    code: str
+    secret: Optional[str] = None
+    recovery_codes: Optional[List[str]] = None
+
+
+class MFADisableRequest(BaseModel):
+    password: Optional[str] = None
+    recovery_code: Optional[str] = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6)
+
+
+class OTPRequest(BaseModel):
+    destination: Optional[str] = None
+    identifier: Optional[str] = None
+    channel: Optional[str] = "sms"
+    purpose: str = "VERIFICATION"
+
+    def get_destination(self) -> str:
+        return (self.destination or self.identifier or "").strip()
+
+
+class OTPVerifyRequest(BaseModel):
+    destination: Optional[str] = None
+    identifier: Optional[str] = None
+    code: str
+    purpose: str = "VERIFICATION"
+
+    def get_destination(self) -> str:
+        return (self.destination or self.identifier or "").strip()
+
+
+class SecurityEventOut(BaseModel):
+    id: int
+    timestamp: datetime
+    event_type: str
+    severity: str
+    ip_address: Optional[str] = None
+    email: Optional[str] = None
+    details: Optional[str] = None
+    acknowledged: bool = False
+
+    @computed_field
+    def is_acknowledged(self) -> bool:
+        return bool(self.acknowledged)
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class SecurityEventSummary(BaseModel):
+    total_events: int
+    critical_count: int
+    warning_count: int
+    info_count: int
+    recent_events: List[SecurityEventOut]
+
 
 

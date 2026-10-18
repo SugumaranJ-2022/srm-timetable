@@ -16,7 +16,8 @@ import {
   CalendarDays,
   CalendarCheck,
   Activity,
-  UserCheck
+  UserCheck,
+  Building2
 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
@@ -42,7 +43,8 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
     { id: 'editor',       label: 'Timetable Editor',    icon: CalendarRange },
     { id: 'crud',         label: 'Resource Registry',   icon: Users },
     { id: 'reports',      label: 'Reports & Export',    icon: FileText },
-    { id: 'live',         label: 'Live Campus Map',     icon: Activity },
+    { id: 'floormap',     label: 'Campus Floor Map',    icon: Building2 },
+    { id: 'live',         label: 'Live Class Tracker',  icon: Activity },
     { id: 'substitution', label: 'Absence Coverage',    icon: UserCheck },
     { id: 'calendar',     label: 'Academic Calendar',   icon: CalendarCheck },
   ];
@@ -50,14 +52,16 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, onClose }) => {
   const staffMenu = [
     { id: 'dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
     { id: 'timetable',  label: 'My Schedule',         icon: CalendarRange },
-    { id: 'live',       label: 'Live Campus Map',     icon: Activity },
+    { id: 'floormap',   label: 'Campus Floor Map',    icon: Building2 },
+    { id: 'live',       label: 'Live Class Tracker',  icon: Activity },
     { id: 'calendar',   label: 'Academic Calendar',   icon: CalendarCheck },
   ];
 
   const studentMenu = [
     { id: 'dashboard',  label: 'Dashboard',          icon: LayoutDashboard },
     { id: 'timetable',  label: 'Class Schedule',      icon: CalendarRange },
-    { id: 'live',       label: 'Live Campus Map',     icon: Activity },
+    { id: 'floormap',   label: 'Campus Floor Map',    icon: Building2 },
+    { id: 'live',       label: 'Live Class Tracker',  icon: Activity },
     { id: 'calendar',   label: 'Academic Calendar',   icon: CalendarCheck },
   ];
 

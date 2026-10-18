@@ -22,14 +22,42 @@ api.interceptors.request.use(
 
 // Auth endpoints
 export const authApi = {
-  login: async (email, password) => {
-    // Standard OAuth2 form-data login
-    const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
-    const response = await api.post('/auth/login', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  getCaptcha: async () => {
+    const response = await api.get('/auth/captcha');
+    return response.data;
+  },
+  login: async ({ email, password, captcha_id, captcha_code }) => {
+    // Enterprise JSON login with server-side CAPTCHA verification
+    const response = await api.post('/auth/login', {
+      email,
+      password,
+      captcha_id,
+      captcha_code,
     });
+    return response.data;
+  },
+  verifyMfa: async ({ mfa_token, code }) => {
+    const response = await api.post('/auth/mfa/verify', { mfa_token, code });
+    return response.data;
+  },
+  setupMfa: async () => {
+    const response = await api.post('/auth/mfa/setup');
+    return response.data;
+  },
+  enableMfa: async (code) => {
+    const response = await api.post('/auth/mfa/enable', { code });
+    return response.data;
+  },
+  disableMfa: async (password) => {
+    const response = await api.post('/auth/mfa/disable', { password });
+    return response.data;
+  },
+  forgotPassword: async (email) => {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  },
+  resetPassword: async ({ token, new_password }) => {
+    const response = await api.post('/auth/reset-password', { token, new_password });
     return response.data;
   },
   register: async (email, password, role = 'Student') => {
@@ -38,6 +66,68 @@ export const authApi = {
   },
   getProfile: async () => {
     const response = await api.get('/auth/me');
+    return response.data;
+  },
+  getSecurityEvents: async () => {
+    const response = await api.get('/auth/admin/security/events');
+    return response.data;
+  },
+  acknowledgeSecurityEvent: async (id) => {
+    const response = await api.post(`/auth/admin/security/events/${id}/acknowledge`);
+    return response.data;
+  },
+  getSocMetrics: async () => {
+    const response = await api.get('/auth/admin/security/soc-metrics');
+    return response.data;
+  },
+  blockIp: async (data) => {
+    const response = await api.post('/auth/admin/security/block-ip', data);
+    return response.data;
+  },
+  unblockIp: async (ip) => {
+    const response = await api.post('/auth/admin/security/unblock-ip', { ip });
+    return response.data;
+  },
+  getBlockedIps: async () => {
+    const response = await api.get('/auth/admin/security/blocked-ips');
+    return response.data;
+  },
+  killAllSessions: async () => {
+    const response = await api.post('/auth/admin/security/kill-sessions');
+    return response.data;
+  },
+  getPasskeyChallenge: async (email) => {
+    const response = await api.post('/auth/passkey/login-challenge', null, { params: { email } });
+    return response.data;
+  },
+  verifyPasskey: async (data) => {
+    const response = await api.post('/auth/passkey/login-verify', data);
+    return response.data;
+  },
+  downloadAuditCsv: async () => {
+    const response = await api.get('/auth/admin/security/export-audit', { responseType: 'blob' });
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `SRM_Security_Audit_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  },
+  enrollFaceLock: async (image) => {
+    const response = await api.post('/auth/face-lock/enroll', { image });
+    return response.data;
+  },
+  getFaceLockStatus: async (email = 'admin@college.edu') => {
+    const response = await api.get('/auth/face-lock/status', { params: { email } });
+    return response.data;
+  },
+  verifyFaceLockLogin: async (data) => {
+    const response = await api.post('/auth/face-lock/verify-login', data);
+    return response.data;
+  },
+  getDevLastOtp: async () => {
+    const response = await api.get('/auth/dev/last-otp');
     return response.data;
   }
 };
@@ -141,6 +231,8 @@ export const timetableApi = {
   getStaffPreferences: (staffId) => api.get(`/timetables/staff-preferences/${staffId}`).then(res => res.data),
   getClassroomEquipmentAudit: () => api.get('/timetables/classrooms/equipment-audit').then(res => res.data),
   getOpenElectivePool: () => api.get('/timetables/electives/pool').then(res => res.data),
+  aiAutoSubstitute: (staffId, date, autoApply = false) => api.post('/timetables/absence/ai-auto-substitute', { staff_id: staffId, date, auto_apply: autoApply }).then(res => res.data),
+  getLiveCampusOccupancy: () => api.get('/timetables/occupancy/live').then(res => res.data),
 };
 
 export const calendarApi = {

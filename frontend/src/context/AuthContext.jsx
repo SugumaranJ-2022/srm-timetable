@@ -32,17 +32,58 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (credentials, passwordArg) => {
     setLoading(true);
     try {
-      const data = await authApi.login(email, password);
-      localStorage.setItem('token', data.access_token);
-      await fetchProfile();
-      return true;
+      let data;
+      if (typeof credentials === 'object' && credentials !== null) {
+        data = await authApi.login(credentials);
+      } else {
+        data = await authApi.login({ email: credentials, password: passwordArg });
+      }
+
+      if (data.mfa_required) {
+        setLoading(false);
+        return data;
+      }
+
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        await fetchProfile();
+      }
+      return data;
     } catch (error) {
       console.error('Login error', error);
       setLoading(false);
       throw error;
+    }
+  };
+
+  const verifyMfa = async ({ mfa_token, code }) => {
+    setLoading(true);
+    try {
+      const data = await authApi.verifyMfa({ mfa_token, code });
+      if (data.access_token) {
+        localStorage.setItem('token', data.access_token);
+        await fetchProfile();
+      }
+      return data;
+    } catch (error) {
+      console.error('MFA verify error', error);
+      setLoading(false);
+      throw error;
+    }
+  };
+
+  const loginWithToken = async (accessToken) => {
+    setLoading(true);
+    try {
+      localStorage.setItem('token', accessToken);
+      await fetchProfile();
+    } catch (err) {
+      console.error('Login with token error', err);
+      setLoading(false);
+      throw err;
     }
   };
 
@@ -55,7 +96,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, profile, loading, login, logout, refreshProfile: fetchProfile }}>
+    <AuthContext.Provider value={{ user, role, profile, loading, login, loginWithToken, verifyMfa, logout, refreshProfile: fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

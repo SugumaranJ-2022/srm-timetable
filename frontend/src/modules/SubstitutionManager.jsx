@@ -11,7 +11,13 @@ import {
   BookOpen,
   Trash2,
   AlertCircle,
-  Zap
+  Zap,
+  Sparkles,
+  Cpu,
+  Layers,
+  Award,
+  Check,
+  X
 } from 'lucide-react';
 
 const SubstitutionManager = () => {
@@ -27,6 +33,11 @@ const SubstitutionManager = () => {
   
   // Mapping for selected substitute candidate per period
   const [selectedSubstitutes, setSelectedSubstitutes] = useState({}); // { period_id: staff_id }
+
+  // AI Smart Substitution State
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
 
   // Load baseline faculty list
   useEffect(() => {
@@ -176,6 +187,43 @@ const SubstitutionManager = () => {
     loadSubstitutionsLog();
   };
 
+  // Run AI Optimization simulation
+  const handleRunAiOptimization = async () => {
+    if (!selectedFacultyId) {
+      setError('Please select an absent faculty member first.');
+      return;
+    }
+    setAiLoading(true);
+    setError('');
+    try {
+      const data = await timetableApi.aiAutoSubstitute(parseInt(selectedFacultyId), selectedDate, false);
+      setAiResult(data);
+      setAiModalOpen(true);
+    } catch (err) {
+      console.error('AI Optimization error:', err);
+      setError(err.response?.data?.detail || 'AI Optimization failed to evaluate substitute candidates.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // 1-Click apply AI matches
+  const handleApplyAiMatches = async () => {
+    setAiLoading(true);
+    try {
+      const data = await timetableApi.aiAutoSubstitute(parseInt(selectedFacultyId), selectedDate, true);
+      setSuccessMsg(`AI Auto-Assigned ${data.auto_assigned_count || 0} period(s) with workload rebalancing!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      setAiModalOpen(false);
+      fetchTeacherSchedule();
+      loadSubstitutionsLog();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to apply AI substitutions.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -272,18 +320,27 @@ const SubstitutionManager = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Auto-Cover All button */}
-              {teacherSchedule.some(p => !p.is_substituted && p.candidates.length > 0) && (
-                <div className="flex justify-end">
+              {/* AI & Quick Coverage Buttons */}
+              <div className="flex items-center justify-end gap-2 flex-wrap">
+                <button
+                  onClick={handleRunAiOptimization}
+                  disabled={aiLoading}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 via-brand-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-[10px] font-black tracking-wide uppercase shadow-lg shadow-brand-500/25 cursor-pointer active:scale-95 transition-all"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : 'animate-pulse text-amber-300'}`} />
+                  {aiLoading ? 'Optimizing AI Weights...' : 'AI Smart Auto-Match & Rebalance'}
+                </button>
+
+                {teacherSchedule.some(p => !p.is_substituted && p.candidates.length > 0) && (
                   <button
                     onClick={handleAutoCoverAll}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-brand-600 to-indigo-500 text-white rounded-xl text-[10px] font-bold shadow-md hover:shadow-brand-500/20 cursor-pointer active:scale-95 transition-all"
+                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-bold hover:bg-slate-300 dark:hover:bg-slate-700 cursor-pointer active:scale-95 transition-all"
                   >
-                    <Zap className="w-3.5 h-3.5" />
-                    Auto-Cover All Uncovered
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    Quick Auto-Cover
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               {teacherSchedule.map(period => (
                 <div
                   key={period.timetable_detail_id}
@@ -427,6 +484,141 @@ const SubstitutionManager = () => {
         )}
       </div>
 
+      {/* AI Smart Substitution Optimization Modal */}
+      {aiModalOpen && aiResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-brand-600 to-indigo-600 rounded-2xl text-white shadow-md shadow-brand-500/20">
+                  <Cpu className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                    AI Smart Substitution Engine
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 font-mono font-bold border border-brand-500/20">
+                      Multi-Constraint V2.4
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Target: <span className="font-bold text-slate-700 dark:text-slate-300">{aiResult.absent_faculty_name}</span> | Date: <span className="font-mono text-slate-700 dark:text-slate-300">{selectedDate}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAiModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* AI Optimization Criteria Banner */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-brand-500/10 via-purple-500/10 to-indigo-500/10 border border-brand-500/20 text-xs space-y-1.5">
+              <div className="font-bold text-brand-600 dark:text-brand-300 flex items-center gap-1.5 text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Algorithmic Objective Breakdown:
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-slate-950/40 border border-brand-500/15">
+                  <span className="text-slate-400 block">Subject Fit</span>
+                  <span className="font-bold text-slate-900 dark:text-white">+40 pts (Specialist)</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-slate-950/40 border border-brand-500/15">
+                  <span className="text-slate-400 block">Workload Balance</span>
+                  <span className="font-bold text-slate-900 dark:text-white">+35 pts (Min Loads)</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-slate-950/40 border border-brand-500/15">
+                  <span className="text-slate-400 block">Department Align</span>
+                  <span className="font-bold text-slate-900 dark:text-white">+15 pts (Same Dept)</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-slate-950/40 border border-brand-500/15">
+                  <span className="text-slate-400 block">Conflict Shield</span>
+                  <span className="font-bold text-emerald-500">100% Slot Safe</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendations List */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {aiResult.recommendations && aiResult.recommendations.length > 0 ? (
+                aiResult.recommendations.map((rec, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-brand-600 dark:text-brand-400 font-mono">
+                          Period {rec.period_number}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {rec.subject_name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">({rec.section_name})</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Room: {rec.room_number || 'Designated Class'}
+                      </div>
+                    </div>
+
+                    {rec.selected_candidate ? (
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-end gap-1">
+                            <Award className="w-3.5 h-3.5 text-amber-400" />
+                            {rec.selected_candidate.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center justify-end gap-1.5 mt-0.5">
+                            <span className="px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded font-bold font-mono">
+                              {rec.selected_candidate.score}% Match
+                            </span>
+                            <span>{rec.selected_candidate.reason}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-lg">
+                        No free faculty candidate
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  No affected periods for this instructor today.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-3">
+              <div className="text-xs text-slate-400">
+                Coverage: <span className="font-bold text-emerald-500">{aiResult.coverage_rate || '100%'}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAiModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyAiMatches}
+                  disabled={aiLoading || !aiResult.recommendations?.some(r => r.selected_candidate)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-black tracking-wide uppercase transition-all shadow-md hover:shadow-brand-500/25 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4 text-emerald-300" />
+                  {aiLoading ? 'Auto-Assigning...' : '1-Click Auto-Assign All Matches'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

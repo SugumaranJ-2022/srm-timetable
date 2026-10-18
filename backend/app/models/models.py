@@ -18,11 +18,19 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="Student")  # Admin, Staff, Student
+    is_active = Column(Boolean, default=True)
+    mfa_enabled = Column(Boolean, default=False)
+    mfa_secret = Column(String(100), nullable=True)
+    mfa_recovery_codes = Column(String(1000), nullable=True)  # JSON-encoded array of recovery codes
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     # Relationships
     staff_profile = relationship("Staff", back_populates="user", uselist=False, cascade="all, delete-orphan")
     student_profile = relationship("Student", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+    otp_verifications = relationship("OTPVerification", back_populates="user", cascade="all, delete-orphan")
 
 
 class Department(Base):
@@ -260,5 +268,49 @@ class ExamSchedule(Base):
     subject = relationship("Subject")
     section = relationship("Section")
     classroom = relationship("Classroom")
+
+
+class SecurityAuditLog(Base):
+    __tablename__ = "security_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    event_type = Column(String(100), nullable=False, index=True)  # LOGIN_SUCCESS, LOGIN_FAILURE, BRUTE_FORCE_BLOCKED, etc.
+    severity = Column(String(20), default="INFO", index=True)     # INFO, WARNING, HIGH, CRITICAL
+    ip_address = Column(String(100), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    email = Column(String(255), nullable=True, index=True)
+    user_id = Column(Integer, nullable=True)
+    details = Column(String(1000), nullable=True)
+    acknowledged = Column(Boolean, default=False)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    token_hash = Column(String(255), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="reset_tokens")
+
+
+class OTPVerification(Base):
+    __tablename__ = "otp_verifications"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    destination = Column(String(255), nullable=False, index=True)  # email or phone
+    purpose = Column(String(50), nullable=False)                  # LOGIN_MFA, PASSWORD_RESET, PHONE_VERIFY
+    code_hash = Column(String(255), nullable=False)
+    attempts = Column(Integer, default=0)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="otp_verifications")
 
 
