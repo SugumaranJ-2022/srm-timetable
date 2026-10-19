@@ -105,18 +105,40 @@ With the backend active, we can deploy the React app.
 
 ---
 
-## 🧪 Step 4: Verification
+## 🤖 Step 4: Keep Backend Awake 24/7 with UptimeRobot (Free)
 
-1. Open your Vercel URL in the browser.
-2. Try logging in using the default seeded admin account:
-   - **Email**: `admin@srm.edu.in`
-   - **Password**: `Admin@1234`
-3. Try generating a new timetable, manually modifying a slot, or checking the Academic Calendar.
-4. Verify there are no network issues (CORS warnings) in the browser console.
+Render free-tier web services spin down / sleep after 15 minutes of inactivity. Setting up a free monitor on **UptimeRobot** pings your backend every 5 minutes so it **never sleeps** and is always instantly fast.
+
+1. Go to [UptimeRobot](https://uptimerobot.com/) and create a free account (or log in).
+2. On your dashboard, click **+ Add New Monitor**.
+3. Configure the monitor settings:
+   - **Monitor Type**: Select `HTTP(s)`.
+   - **Friendly Name**: `SRM Timetable Backend`.
+   - **URL (or IP)**: Your Render backend health check URL:
+     ```
+     https://your-render-backend-name.onrender.com/health
+     ```
+     *(Example: `https://srm-timetable-backend.onrender.com/health`)*
+   - **Monitoring Interval**: Set to `Every 5 minutes` (free tier default).
+   - **Monitor Timeout**: `30 seconds`.
+4. Click **Create Monitor**.
+5. UptimeRobot will now send a `GET /health` ping every 5 minutes. Your Render container will stay warm 24/7 with zero spin-down latency!
+
+---
+
+## 🧪 Step 5: Verification & Testing
+
+1. Open your Vercel URL in your browser (e.g. `https://srm-ai-powered-timetable.vercel.app`).
+2. Log in with the standard credentials:
+   - **Email**: `admin@college.edu`
+   - **Password**: `Admin123!`
+3. Check the developer console (`F12` -> Console) to confirm all API calls to your Render backend succeed with `200 OK`.
+4. Check your UptimeRobot dashboard to confirm the monitor is **Up (100%)**.
 
 ---
 
 ## 🛠️ Maintenance & Redeployment
 
 - **Auto Deploys**: Any time you push a new commit to the `main` branch of your GitHub repository, both Vercel and Render will automatically trigger new builds and deploy your updates.
-- **Spin-down**: Render's free tier services spin down after 15 minutes of inactivity. When you open the website after a long break, the first request may take ~50 seconds to complete while Render boots up the container.
+- **Spin-down Prevention**: With UptimeRobot actively pinging `https://<backend-url>/health`, the backend remains permanently active and responsive.
+
