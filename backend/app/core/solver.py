@@ -539,14 +539,14 @@ async def generate_timetable_csp(
         sum(project_position_penalties) * 3
     )
 
-    # 5. Run Solver - Configured with safe thread count to prevent cloud resource throttling and memory OOM
+    # 5. Run Solver - Configured with safe thread count to prevent cloud resource throttling, OOM kills, and 502 Bad Gateway timeouts
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 60.0
+    solver.parameters.max_time_in_seconds = 20.0
     
-    # Restrict to at most 4 workers to speed up multi-section solving
+    # Restrict to at most 2 workers to fit cloud RAM limits (< 512MB) and finish within gateway timeouts
     import os
     cpu_count = os.cpu_count() or 1
-    solver.parameters.num_search_workers = min(4, cpu_count)
+    solver.parameters.num_search_workers = min(2, cpu_count)
     
     solver.parameters.interleave_search = True
     status = solver.Solve(model)

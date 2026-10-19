@@ -81,6 +81,7 @@ import re
 # Allowed origins — production + local development
 ALLOWED_ORIGINS = [
     "https://srm-ai-powered-timetable.vercel.app",
+    "https://srm-timetable-one.vercel.app",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
