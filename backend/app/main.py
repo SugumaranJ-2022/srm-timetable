@@ -94,11 +94,11 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5174",
 ]
 
-# CORS setup with explicit origins and localhost wildcard regex
+# CORS setup with explicit origins, Vercel wildcard regex, and localhost
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -109,7 +109,7 @@ app.add_middleware(
 async def global_exception_handler(request: Request, exc: Exception):
     origin = request.headers.get("origin", "")
     headers = {}
-    if origin and (origin in ALLOWED_ORIGINS or re.match(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$", origin)):
+    if origin and (origin in ALLOWED_ORIGINS or re.match(r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$", origin)):
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
         headers["Access-Control-Allow-Methods"] = "*"
@@ -134,6 +134,11 @@ from backend.app.core.database import get_db
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Smart Timetable Management System API"}
+
+@app.get("/health")
+def health_check():
+    """Lightweight health check endpoint for UptimeRobot ping / keep-alive."""
+    return {"status": "ok", "service": "srm-timetable-backend"}
 
 @app.get("/debug-db")
 async def debug_db(db: AsyncSession = Depends(get_db)):
