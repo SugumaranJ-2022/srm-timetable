@@ -149,6 +149,19 @@ const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
     checkDept();
   }, [departments]);
 
+  // Error Message Formatting Helper (safely handles strings, arrays, objects from FastAPI)
+  const getErrorMessage = (err, fallback = 'Operation failed.') => {
+    const detail = err?.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map(d => `${d.loc ? d.loc.filter(x => x !== 'body').join('.') + ': ' : ''}${d.msg}`).join('; ');
+    }
+    if (typeof detail === 'object' && detail !== null) {
+      return JSON.stringify(detail);
+    }
+    return err?.message || fallback;
+  };
+
   // Save / Lock Manual UG Pre-Allocated Slot
   const handleCreatePreAllocSlot = async (e) => {
     e.preventDefault();
@@ -158,7 +171,12 @@ const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
     }
     const key = `${preAllocForm.day_of_week}_${preAllocForm.period_number}`;
     const foundTs = timeslots.find(t => t.day_of_week === preAllocForm.day_of_week && t.period_number === parseInt(preAllocForm.period_number));
-    const timeslot_id = foundTs ? foundTs.id : (TIMESLOT_MAP[key] || 1);
+    const timeslot_id = foundTs ? foundTs.id : (TIMESLOT_MAP[key] || null);
+
+    if (!timeslot_id) {
+      setError('No valid timeslot found for the selected day and period. Please ensure master timetable data is loaded.');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -174,7 +192,7 @@ const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
       setSuccess('UG Subject slot pre-allocated and locked successfully! Auto-solver will respect this fixed period.');
       loadData();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to lock pre-allocated UG slot.');
+      setError(getErrorMessage(err, 'Failed to lock pre-allocated UG slot.'));
     } finally {
       setLoading(false);
     }
@@ -506,21 +524,8 @@ const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
       setShowAddForm(false);
       loadData();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Validation error. Avoid duplicate mappings.');
+      setError(getErrorMessage(err, 'Validation error. Avoid duplicate mappings.'));
     }
-  };
-
-  // Error Message Formatting Helper (safely handles strings, arrays, objects from FastAPI)
-  const getErrorMessage = (err, fallback = 'Operation failed.') => {
-    const detail = err?.response?.data?.detail;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) {
-      return detail.map(d => `${d.loc ? d.loc.filter(x => x !== 'body').join('.') + ': ' : ''}${d.msg}`).join('; ');
-    }
-    if (typeof detail === 'object' && detail !== null) {
-      return JSON.stringify(detail);
-    }
-    return err?.message || fallback;
   };
 
   // Single Record Deletion Handlers
@@ -1194,6 +1199,13 @@ const AdminCrud = ({ initialSubTab, onSubTabChange }) => {
                     </div>
                   </div>
                 </div>
+
+                {error && (
+                  <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 flex items-start gap-2.5 text-red-600 dark:text-red-400 text-xs">
+                    <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{typeof error === 'string' ? error : JSON.stringify(error)}</span>
+                  </div>
+                )}
 
                 <form onSubmit={handleCreatePreAllocSlot} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                   <div>
