@@ -557,19 +557,35 @@ async def import_master(
     # 5. Insert Users and Staff
     if df_staff is not None:
         for _, row in df_staff.iterrows():
-            user_id = int(row["user_id"])
-            email = str(row["email"])
-            db.add(User(
-                id=user_id,
-                email=email,
-                password_hash=get_password_hash("Staff123!"),
-                role="Staff"
-            ))
-            await db.flush()
+            requested_uid = int(row["user_id"])
+            email = str(row["email"]).strip()
+            
+            res_u = await db.execute(select(User).where(User.email.ilike(email)))
+            existing_u = res_u.scalar_one_or_none()
+            if existing_u:
+                actual_user_id = existing_u.id
+            else:
+                res_id = await db.execute(select(User).where(User.id == requested_uid))
+                if res_id.scalar_one_or_none():
+                    new_user = User(
+                        email=email,
+                        password_hash=get_password_hash("Staff123!"),
+                        role="Staff"
+                    )
+                else:
+                    new_user = User(
+                        id=requested_uid,
+                        email=email,
+                        password_hash=get_password_hash("Staff123!"),
+                        role="Staff"
+                    )
+                db.add(new_user)
+                await db.flush()
+                actual_user_id = new_user.id
             
             db.add(Staff(
                 id=int(row["id"]),
-                user_id=user_id,
+                user_id=actual_user_id,
                 name=str(row["name"]),
                 phone=str(row["phone"]) if pd.notna(row.get("phone")) else None,
                 status=str(row.get("status", "Active")),
@@ -742,23 +758,52 @@ async def import_master(
     # 9. Insert Users and Students
     if df_students is not None:
         for _, row in df_students.iterrows():
-            user_id = int(row["user_id"])
-            email = str(row["email"])
-            db.add(User(
-                id=user_id,
-                email=email,
-                password_hash=get_password_hash("Student123!"),
-                role="Student"
-            ))
-            await db.flush()
+            requested_uid = int(row["user_id"])
+            email = str(row["email"]).strip()
+            
+            res_u = await db.execute(select(User).where(User.email.ilike(email)))
+            existing_u = res_u.scalar_one_or_none()
+            if existing_u:
+                actual_user_id = existing_u.id
+            else:
+                res_id = await db.execute(select(User).where(User.id == requested_uid))
+                if res_id.scalar_one_or_none():
+                    new_u = User(
+                        email=email,
+                        password_hash=get_password_hash("Student123!"),
+                        role="Student"
+                    )
+                else:
+                    new_u = User(
+                        id=requested_uid,
+                        email=email,
+                        password_hash=get_password_hash("Student123!"),
+                        role="Student"
+                    )
+                db.add(new_u)
+                await db.flush()
+                actual_user_id = new_u.id
             
             db.add(Student(
                 id=int(row["id"]),
-                user_id=user_id,
+                user_id=actual_user_id,
                 register_number=str(row["register_number"]),
                 section_id=int(row["section_id"]) if pd.notna(row.get("section_id")) else None,
                 semester=int(row["semester"])
             ))
+        await db.flush()
+
+    # Synchronize PostgreSQL primary key sequences to avoid future auto-increment conflicts
+    if not is_sqlite:
+        seq_tables = [
+            "departments", "classrooms", "subjects", "timeslots",
+            "users", "staff", "sections", "section_subjects", "students", "timetables", "timetable_details", "pre_allocated_slots"
+        ]
+        for tbl in seq_tables:
+            try:
+                await db.execute(text(f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), COALESCE((SELECT MAX(id) FROM {tbl}), 1))"))
+            except Exception:
+                pass
         await db.flush()
 
     # Seed academic calendar events
