@@ -34,37 +34,36 @@ async def init_db_and_seed():
         
         await conn.run_sync(check_and_add_columns)
 
-    # Seed development test accounts if in development mode
-    if settings.ENVIRONMENT in ["development", "testing"]:
-        from backend.app.core.database import AsyncSessionLocal
-        from backend.app.models.models import User
-        from backend.app.core.security import get_password_hash
-        from sqlalchemy.future import select
-        
-        async with AsyncSessionLocal() as session:
-            test_accounts = [
-                ("admin@test.local", "Admin123!", "Admin"),
-                ("faculty@test.local", "Faculty123!", "Staff"),
-                ("student@test.local", "Student123!", "Student"),
-                ("admin@college.edu", "Admin123!", "Admin"),
-            ]
-            for email, raw_pwd, role in test_accounts:
-                res = await session.execute(select(User).where(User.email == email))
-                existing = res.scalars().first()
-                if not existing:
-                    user = User(
-                        email=email,
-                        password_hash=get_password_hash(raw_pwd),
-                        role=role,
-                        is_active=True,
-                        mfa_enabled=False
-                    )
-                    session.add(user)
-                else:
-                    existing.password_hash = get_password_hash(raw_pwd)
-                    existing.is_active = True
-                    existing.mfa_enabled = False
-            await session.commit()
+    # Seed default admin and test accounts if missing
+    from backend.app.core.database import AsyncSessionLocal
+    from backend.app.models.models import User
+    from backend.app.core.security import get_password_hash
+    from sqlalchemy.future import select
+    
+    async with AsyncSessionLocal() as session:
+        test_accounts = [
+            ("admin@college.edu", "Admin123!", "Admin"),
+            ("admin@srm.edu.in", "Admin@1234", "Admin"),
+            ("admin@test.local", "Admin123!", "Admin"),
+            ("faculty@test.local", "Faculty123!", "Staff"),
+            ("student@test.local", "Student123!", "Student"),
+        ]
+        for email, raw_pwd, role in test_accounts:
+            res = await session.execute(select(User).where(User.email.ilike(email.strip())))
+            existing = res.scalars().first()
+            if not existing:
+                user = User(
+                    email=email,
+                    password_hash=get_password_hash(raw_pwd),
+                    role=role,
+                    is_active=True,
+                    mfa_enabled=False
+                )
+                session.add(user)
+            else:
+                existing.password_hash = get_password_hash(raw_pwd)
+                existing.is_active = True
+        await session.commit()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
